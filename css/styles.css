@@ -881,3 +881,65 @@ input:focus, select:focus{
 .cardItemRow .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .txPayPill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:var(--muted);font-size:12px;line-height:1.2}
 
+
+
+/* Botão com aparência de select (usado no seletor de cartão) */
+.selectLike{
+  width:100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.22);
+  color: var(--text);
+  outline:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  cursor:pointer;
+}
+.selectLike:active{transform: translateY(1px);}
+.selectLike .chev{opacity:.85}
+
+/* Modal simples (bottom sheet) para escolher cartão - evita bugs de dropdown em PWA/Android */
+.modalOverlay{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.55);
+  z-index: 9999;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding: 14px;
+}
+.modalSheet{
+  width: min(560px, 100%);
+  background: rgba(17,24,39,.95);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  overflow:hidden;
+}
+.modalHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 12px 14px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.modalTitle{font-weight:800}
+.modalBody{padding: 10px 10px 14px 10px; max-height: 60vh; overflow:auto}
+.pickerItem{
+  width:100%;
+  text-align:left;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border:1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.18);
+  color: var(--text);
+  margin: 8px 0;
+  cursor:pointer;
+}
+.pickerItem .sub{display:block; font-size:12px; color: var(--muted); margin-top:4px}
+.pickerItem:hover{border-color: rgba(37,99,235,.55)}
+.pickerItem.danger{border-color: rgba(220,38,38,.35)}

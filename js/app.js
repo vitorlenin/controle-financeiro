@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.6.1";
+const APP_VERSION = "v0.6.2";
 const BUILD_TIME = "19/02/2026 08:00";
 const BUILD_TIME_ISO = "2026-02-19T08:00:00";
 
@@ -704,6 +704,11 @@ class UI {
     this.qPayMethod = this.$("qPayMethod");
     this.qCardWrap = this.$("qCardWrap");
     this.qCard = this.$("qCard");
+    this.qCardBtn = this.$("qCardBtn");
+    this.qCardBtnText = this.$("qCardBtnText");
+    this.cardPickerModal = this.$("cardPickerModal");
+    this.cardPickerList = this.$("cardPickerList");
+    this.cardPickerClose = this.$("cardPickerClose");
     this.qInvoiceHint = this.$("qInvoiceHint");
     this.qRecRow = this.$("qRecRow");
     this.qMakeRecurring = this.$("qMakeRecurring");
@@ -998,6 +1003,7 @@ class UI {
         const isCredit = this.qPayMethod.value === "credito";
         if (this.qCardWrap) this.qCardWrap.style.display = isCredit ? "block" : "none";
         if (!isCredit && this.qCard) this.qCard.value = "";
+        if (!isCredit && this.qCardBtnText) this.qCardBtnText.textContent = "Selecione um cartão…";
         this._updateInvoiceHint();
       });
     }
@@ -1007,7 +1013,11 @@ class UI {
         this._applyTypeUI();
       });
     }
-    if (this.qCard) {
+    // Seletor de cartão: em PWA/Android o <select> pode "bugar"; usamos um picker custom quando disponível.
+    if (this.qCardBtn) {
+      this.qCardBtn.addEventListener("click", () => this._openCardPicker());
+    } else if (this.qCard) {
+      // fallback (desktop): select nativo
       this.qCard.addEventListener("change", () => {
         if (this.qCard.value === "__add__") {
           this.qCard.value = "";
@@ -1015,6 +1025,15 @@ class UI {
           return;
         }
         this._updateInvoiceHint();
+      });
+    }
+
+    if (this.cardPickerClose) {
+      this.cardPickerClose.addEventListener("click", () => this._closeCardPicker());
+    }
+    if (this.cardPickerModal) {
+      this.cardPickerModal.addEventListener("click", (e) => {
+        if (e.target === this.cardPickerModal) this._closeCardPicker();
       });
     }
 
@@ -1237,6 +1256,7 @@ class UI {
   _resetPayFields() {
     if (this.qPayMethod) this.qPayMethod.value = "dinheiro";
     if (this.qCard) this.qCard.value = "";
+    if (this.qCardBtnText) this.qCardBtnText.textContent = "Selecione um cartão…";
     if (this.qCardWrap) this.qCardWrap.style.display = "none";
     if (this.qInvoiceHint) this.qInvoiceHint.textContent = "";
   }
@@ -1941,8 +1961,68 @@ class UI {
         sel.appendChild(oa);
       }
     };
-    fill(this.qCard, true);
+    if (this.qCard && this.qCard.tagName === "SELECT") {
+      fill(this.qCard, true);
+    } else {
+      this._syncCardPicker();
+    }
     fill(this.fatCard, false);
+  }
+
+  _syncCardPicker() {
+    const cards = this.state.cards || [];
+    // Atualiza texto do botão
+    const currentId = (this.qCard && this.qCard.value) ? String(this.qCard.value) : "";
+    const current = cards.find(c => String(c.id) === currentId);
+    if (this.qCardBtnText) this.qCardBtnText.textContent = current ? current.name : (cards.length ? "Selecione um cartão…" : "Nenhum cartão (adicione)");
+
+    if (!this.cardPickerList) return;
+    this.cardPickerList.innerHTML = "";
+
+    const makeItem = (label, sub, onClick, cls="") => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pickerItem" + (cls ? " " + cls : "");
+      b.innerHTML = label + (sub ? `<span class="sub">${sub}</span>` : "");
+      b.addEventListener("click", onClick);
+      return b;
+    };
+
+    if (!cards.length) {
+      this.cardPickerList.appendChild(makeItem("＋ Adicionar cartão…", "Cadastre seu primeiro cartão", () => {
+        this._closeCardPicker();
+        this._openCartoesDialog();
+      }));
+      return;
+    }
+
+    for (const c of cards) {
+      const sub = `Fecha dia ${c.closingDay} • Vence dia ${c.dueDay}` + (c.limit ? ` • Limite ${Money.toBRL(c.limit)}` : "");
+      this.cardPickerList.appendChild(makeItem(c.name, sub, () => {
+        if (this.qCard) this.qCard.value = c.id;
+        if (this.qCardBtnText) this.qCardBtnText.textContent = c.name;
+        this._closeCardPicker();
+        this._updateInvoiceHint();
+      }));
+    }
+
+    this.cardPickerList.appendChild(makeItem("＋ Adicionar cartão…", "Cadastrar um novo cartão", () => {
+      this._closeCardPicker();
+      this._openCartoesDialog();
+    }));
+  }
+
+  _openCardPicker() {
+    if (!this.cardPickerModal) return;
+    this._syncCardPicker();
+    this.cardPickerModal.style.display = "flex";
+    if (this.qCardBtn) this.qCardBtn.setAttribute("aria-expanded", "true");
+  }
+
+  _closeCardPicker() {
+    if (!this.cardPickerModal) return;
+    this.cardPickerModal.style.display = "none";
+    if (this.qCardBtn) this.qCardBtn.setAttribute("aria-expanded", "false");
   }
 
   _fmtPayPill(tx) {
