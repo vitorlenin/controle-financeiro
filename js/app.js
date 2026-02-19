@@ -1,6 +1,6 @@
-const APP_VERSION = "v0.6.5";
-const BUILD_TIME = "19/02/2026 10:00";
-const BUILD_TIME_ISO = "2026-02-19T10:00:00";
+const APP_VERSION = "v0.6.6";
+const BUILD_TIME = "19/02/2026 17:00";
+const BUILD_TIME_ISO = "2026-02-19T17:00:00";
 
 // Firebase init (compat build for maximum browser support)
 // Note: firebase scripts are loaded in index.html before this file.
@@ -733,6 +733,22 @@ class UI {
     this.btnAddCat = this.$("btnAddCat");
     this.catMsg = this.$("catMsg");
     this.catsWrap = this.$("catsWrap");
+    // Add Category modal
+    this.btnOpenAddCat = this.$("btnOpenAddCat");
+    this.catAddModal = this.$("catAddModal");
+    this.catAddClose = this.$("catAddClose");
+    this.catAddCancel = this.$("catAddCancel");
+
+    // Add Subcategory modal
+    this.btnOpenAddSub = this.$("btnOpenAddSub");
+    this.subAddModal = this.$("subAddModal");
+    this.subAddClose = this.$("subAddClose");
+    this.subAddCancel = this.$("subAddCancel");
+    this.subNome = this.$("subNome");
+    this.subCatSelect = this.$("subCatSelect");
+    this.btnAddSub = this.$("btnAddSub");
+    this.subMsg = this.$("subMsg");
+
 
     this.fMes = this.$("fMes");
     this.fTipo = this.$("fTipo");
@@ -1071,6 +1087,78 @@ class UI {
       });
     }
 
+
+    // Open/Close: Nova categoria (modal)
+    const closeCatAdd = () => {
+      if (this.catAddModal) this.catAddModal.style.display = "none";
+      if (this.catMsg) this.catMsg.textContent = "";
+      if (this.catNome) this.catNome.value = "";
+    };
+    if (this.btnOpenAddCat) {
+      this.btnOpenAddCat.addEventListener("click", async () => {
+        try {
+          await this._requireLogin();
+          if (this.catAddModal) this.catAddModal.style.display = "block";
+          if (this.catMsg) this.catMsg.textContent = "";
+          // ensure palette selection reflects current hidden input
+          this._mountPalette(this.catCorPalette, this.catCor);
+          setTimeout(() => this.catNome?.focus(), 0);
+        } catch (_) {}
+      });
+    }
+    this.catAddClose?.addEventListener("click", closeCatAdd);
+    this.catAddCancel?.addEventListener("click", closeCatAdd);
+    // Close on backdrop click
+    this.catAddModal?.addEventListener("click", (e) => {
+      if (e.target === this.catAddModal) closeCatAdd();
+    });
+
+    // Open/Close: Nova subcategoria (modal)
+    const closeSubAdd = () => {
+      if (this.subAddModal) this.subAddModal.style.display = "none";
+      if (this.subMsg) this.subMsg.textContent = "";
+      if (this.subNome) this.subNome.value = "";
+      if (this.subCatSelect) this.subCatSelect.value = "";
+    };
+    if (this.btnOpenAddSub) {
+      this.btnOpenAddSub.addEventListener("click", async () => {
+        try {
+          await this._requireLogin();
+          this._fillSubcategoryCategorySelect();
+          if (!(this.state.categories || []).filter(c=>!isHiddenCategoryName(c.name)).length) {
+            alert("Crie uma categoria antes de adicionar subcategoria.");
+            return;
+          }
+          if (this.subAddModal) this.subAddModal.style.display = "block";
+          if (this.subMsg) this.subMsg.textContent = "";
+          setTimeout(() => this.subNome?.focus(), 0);
+        } catch (_) {}
+      });
+    }
+    this.subAddClose?.addEventListener("click", closeSubAdd);
+    this.subAddCancel?.addEventListener("click", closeSubAdd);
+    this.subAddModal?.addEventListener("click", (e) => {
+      if (e.target === this.subAddModal) closeSubAdd();
+    });
+
+    if (this.btnAddSub) {
+      this.btnAddSub.addEventListener("click", async () => {
+        try {
+          await this._requireLogin();
+          if (this.subMsg) this.subMsg.textContent = "";
+          const name = (this.subNome?.value || "").trim();
+          const catId = (this.subCatSelect?.value || "").trim();
+          if (!name) throw new Error("Digite um nome para a subcategoria.");
+          if (!catId) throw new Error("Selecione a categoria.");
+          await this._addSubcategoryByModal(catId, name);
+          if (this.subMsg) this.subMsg.textContent = "Subcategoria adicionada ✅";
+          setTimeout(closeSubAdd, 450);
+        } catch (e) {
+          if (this.subMsg) this.subMsg.textContent = e.message || "Erro ao adicionar.";
+        }
+      });
+    }
+
     if (this.btnAddCat) {
       this.btnAddCat.addEventListener("click", async () => {
         try {
@@ -1086,6 +1174,7 @@ class UI {
           this.state.categories = await this.catSvc.save(next);
           this.catNome.value = "";
           this.catMsg.textContent = "Categoria adicionada ✅";
+          setTimeout(() => { try { closeCatAdd(); } catch(_){} }, 450);
           this._syncCategorySelects();
           this.renderCategorias();
         } catch (e) {
@@ -1514,6 +1603,34 @@ class UI {
     const has = cats.some(c => c.name === current);
     this.qCategoria.value = has ? current : (cats[0]?.name || "Outros");
     this._populateSubSelect(this.qCategoria.value);
+    this._fillSubcategoryCategorySelect();
+  }
+
+
+  _fillSubcategoryCategorySelect() {
+    if (!this.subCatSelect) return;
+    const cats = (this.state.categories || []).slice()
+      .filter(c => !isHiddenCategoryName(c.name))
+      .sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+    const cur = this.subCatSelect.value;
+    this.subCatSelect.innerHTML = `<option value="">—</option>` + cats.map(c =>
+      `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`
+    ).join("");
+    if (cur) this.subCatSelect.value = cur;
+  }
+
+  async _addSubcategoryByModal(catId, name) {
+    const cats = (this.state.categories || []).slice();
+    const idx = cats.findIndex(c => c.id === catId);
+    if (idx < 0) throw new Error("Categoria inválida.");
+    const subs = (cats[idx].subs || []).slice();
+    const exists = subs.some(s => s.toLowerCase() === name.toLowerCase());
+    if (exists) throw new Error("Essa subcategoria já existe nessa categoria.");
+    const nextSubs = Array.from(new Set([...subs, name]));
+    cats[idx] = { ...cats[idx], subs: nextSubs };
+    this.state.categories = await this.catSvc.save(cats);
+    this._syncCategorySelects();
+    this.renderCategorias();
   }
 
   _populateSubSelect(catName) {
@@ -1846,20 +1963,12 @@ class UI {
           </div>
         </div>
 
-        <div class="catSubAdd">
-          <label class="field" style="flex:1;">
-            <span>Adicionar subcategoria</span>
-            <input data-sub-input="${cat.id}" placeholder="Ex: Farmácia, Academia" type="text" />
-          </label>
-          <button class="btn btn--primary miniBtn" data-sub-add="${cat.id}" type="button">Adicionar</button>
-        </div>
-
         <div class="chips">
           ${(cat.subs||[]).slice().sort((a,b)=>a.localeCompare(b,'pt-BR')).map(s => `
             <div class="chip">
               <span>${escapeHtml(s)}</span>
               <button class="chipBtn" title="Editar" aria-label="Editar" data-sub-edit="${cat.id}" data-sub-name="${escapeHtml(s)}">✎</button>
-              <button class="chipBtn" title="Excluir" aria-label="Excluir" data-sub-del="${cat.id}" data-sub-name="${escapeHtml(s)}">×</button>
+              <button class="chipBtn is-danger" title="Excluir" aria-label="Excluir" data-sub-del="${cat.id}" data-sub-name="${escapeHtml(s)}">×</button>
             </div>
           `).join("")}
           ${(cat.subs||[]).length ? "" : `<span class=\"muted small\">Sem subcategorias.</span>`}
@@ -1869,9 +1978,6 @@ class UI {
       // Category actions
       el.querySelector("[data-cat-edit]")?.addEventListener("click", () => this._openCategoryEdit(cat.id));
       el.querySelector("[data-cat-del]")?.addEventListener("click", () => this._deleteCategory(cat.id));
-
-      // Add subcategory
-      el.querySelector("[data-sub-add]")?.addEventListener("click", () => this._addSubcategory(cat.id));
 
       // Edit/delete subcategory chips
       el.querySelectorAll("[data-sub-edit]").forEach(btn => {

@@ -447,48 +447,41 @@
 </section>
 <section class="view" id="view-categorias">
 <div class="sectionTitle">
-<div>
-<h2>Configurações</h2>
-<p class="hint">Gerencie <b>categorias</b>, <b>subcategorias</b> e <b>cartões</b>.</p>
-</div>
-</div>
-
-<div class="box">
-<div class="box__title">
-<h3>Cartões de crédito</h3>
-<p class="muted small">Cadastre e edite seus cartões (fechamento, vencimento e limite opcional).</p>
-</div>
-<button class="btn btn--primary" id="btnGerenciarCartoes" type="button">Gerenciar cartões</button>
+  <div>
+    <h2>Configurações</h2>
+    <p class="hint">Gerencie <b>categorias</b>, <b>subcategorias</b> e <b>cartões</b>.</p>
+  </div>
 </div>
 
 <div class="box">
-<div class="box__title">
-<h3>Adicionar categoria</h3>
-<p class="muted small">As categorias aparecem no cadastro de lançamentos.</p>
-</div>
-<div class="row2" style="align-items:flex-end;">
-<label class="field">
-<span>Nome da categoria</span>
-<input id="catNome" placeholder="Ex: Pets, Educação, Impostos" type="text"/>
-</label>
-<label class="field" style="max-width:240px;">
-  <span>Cor</span>
-  <input id="catCor" type="hidden" value="#2563EB"/>
-  <div class="palette" id="catCorPalette" aria-label="Selecionar cor da categoria"></div>
-</label>
-<button class="btn btn--primary" id="btnAddCat" type="button">Adicionar</button>
-</div>
-<div class="formMsg" id="catMsg"></div>
+  <div class="box__title">
+    <h3>Categorias e subcategorias</h3>
+    <p class="muted small">Use para organizar seus lançamentos. Excluir não apaga lançamentos antigos.</p>
+  </div>
+
+  <div class="btnRow">
+    <button class="btn btn--primary" id="btnOpenAddCat" type="button">＋ Nova categoria</button>
+    <button class="btn btn--primary" id="btnOpenAddSub" type="button">＋ Nova subcategoria</button>
+  </div>
 </div>
 
 <div class="box">
-<div class="box__title">
-<h3>Lista</h3>
-<p class="muted small">Clique em editar/excluir para gerenciar. Excluir não apaga lançamentos antigos.</p>
+  <div class="box__title">
+    <h3>Lista</h3>
+    <p class="muted small">Clique em editar/excluir para gerenciar.</p>
+  </div>
+  <div id="catsWrap"></div>
 </div>
-<div id="catsWrap"></div>
+
+<div class="box">
+  <div class="box__title">
+    <h3>Cartões de crédito</h3>
+    <p class="muted small">Cadastre e edite seus cartões (fechamento, vencimento e limite opcional).</p>
+  </div>
+  <button class="btn btn--primary" id="btnGerenciarCartoes" type="button">Gerenciar cartões</button>
 </div>
 </section>
+
 
 <section class="view" id="view-backup">
 <div class="sectionTitle">
@@ -678,6 +671,65 @@
       }).catch(()=>{});
     }
   </script>
+
+
+<!-- Add Category Modal -->
+<div class="modalOverlay" id="catAddModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Nova categoria">
+  <div class="modalSheet">
+    <div class="modalHead">
+      <div class="modalTitle">Nova categoria</div>
+      <button class="iconBtn" id="catAddClose" type="button" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modalBody">
+      <div class="row2" style="align-items:flex-end;">
+        <label class="field" style="flex:1;">
+          <span>Nome da categoria</span>
+          <input id="catNome" placeholder="Ex: Pets, Educação, Impostos" type="text"/>
+        </label>
+        <label class="field" style="max-width:240px;">
+          <span>Cor</span>
+          <input id="catCor" type="hidden" value="#2563EB"/>
+          <div class="palette" id="catCorPalette" aria-label="Selecionar cor da categoria"></div>
+        </label>
+      </div>
+      <div class="formMsg" id="catMsg"></div>
+      <div class="modalActions">
+        <button class="btn btn--ghost" id="catAddCancel" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnAddCat" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Subcategory Modal -->
+<div class="modalOverlay" id="subAddModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Nova subcategoria">
+  <div class="modalSheet">
+    <div class="modalHead">
+      <div class="modalTitle">Nova subcategoria</div>
+      <button class="iconBtn" id="subAddClose" type="button" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modalBody">
+      <div class="row2" style="align-items:flex-end;">
+        <label class="field" style="flex:1;">
+          <span>Nome da subcategoria</span>
+          <input id="subNome" placeholder="Ex: Farmácia, Academia" type="text"/>
+        </label>
+        <label class="field" style="max-width:260px;">
+          <span>Categoria</span>
+          <select id="subCatSelect">
+            <option value="">—</option>
+          </select>
+        </label>
+      </div>
+      <div class="formMsg" id="subMsg"></div>
+      <div class="modalActions">
+        <button class="btn btn--ghost" id="subAddCancel" type="button">Cancelar</button>
+        <button class="btn btn--primary" id="btnAddSub" type="button">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- Card picker (custom dropdown) -->
 <div class="modalOverlay" id="cardPickerModal" style="display:none;" role="dialog" aria-modal="true" aria-label="Selecionar cartão">

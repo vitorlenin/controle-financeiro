@@ -387,6 +387,22 @@ body{
 .box__title p{margin:6px 0 0}
 
 .form{margin-top: 10px}
+
+.btnRow{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.btnRow .btn{ flex:1; min-width: 180px; }
+
+.modalActions{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  margin-top:12px;
+}
+.modalActions .btn{ min-width:120px; }
+
 .row2{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -992,3 +1008,7 @@ input:focus, select:focus{
 .btn--dangerSoft:hover{background: rgba(239,68,68,.18)}
 
 #view-categorias .catTitle .catDot{width:10px;height:10px;display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.22)}
+
+
+.chipBtn.is-danger{ color: var(--danger); background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.18); }
+.chipBtn.is-danger:hover{ background: rgba(239,68,68,.18); }
