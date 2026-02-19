@@ -1763,7 +1763,7 @@ class UI {
           <div class="catActions">
             <div class="muted" style="font-weight:800;">${Money.toBRL(r.amount)}</div>
             <button class="btn btn--ghost miniBtn" data-rec-edit="${r.id}">Editar</button>
-            <button class="btn btn--danger miniBtn" data-rec-del="${r.id}">Excluir</button>
+            <button class="btn btn--dangerSoft miniBtn" data-rec-del="${r.id}">Excluir</button>
           </div>
         </div>
       `;
@@ -2203,7 +2203,7 @@ class UI {
         </div>
         <div class="actions">
           <button class="btn btn--ghost miniBtn" data-edit="${c.id}">Editar</button>
-          <button class="btn btn--danger miniBtn" data-del="${c.id}">Excluir</button>
+          <button class="btn btn--dangerSoft miniBtn" data-del="${c.id}">Excluir</button>
         </div>
       `;
       row.querySelector("[data-edit]").addEventListener("click", () => this._editCard(c));
@@ -2346,7 +2346,7 @@ class UI {
         </div>
         <div class="txActions">
           <button class="btn btn--ghost miniBtn" data-edit="${tx.id}">Editar</button>
-          <button class="btn btn--danger miniBtn" data-del="${tx.id}">Excluir</button>
+          <button class="btn btn--dangerSoft miniBtn" data-del="${tx.id}">Excluir</button>
         </div>
       `;
       card.querySelector("[data-edit]").addEventListener("click", () => this._editTx(tx));
@@ -2367,7 +2367,7 @@ class UI {
         <td class="right">${Money.toBRL(tx.amount)}</td>
         <td class="right">
           <button class="btn btn--ghost miniBtn" data-edit="${tx.id}">Editar</button>
-          <button class="btn btn--danger miniBtn" data-del="${tx.id}">Excluir</button>
+          <button class="btn btn--dangerSoft miniBtn" data-del="${tx.id}">Excluir</button>
         </td>
       `;
       tr.querySelector("[data-edit]").addEventListener("click", () => this._editTx(tx));

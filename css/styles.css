@@ -244,6 +244,16 @@ body{
   cursor:pointer;
 }
 .chipBtn:hover{background: rgba(255,255,255,.16)}
+
+
+/* Delete icon buttons should match "Excluir" style from Configurações */
+.chipBtn[data-sub-del]{
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.25);
+  color: #ef4444;
+}
+.chipBtn[data-sub-del]:hover{background: rgba(239,68,68,.18)}
+
 .catSubAdd{
   display:flex;
   gap:10px;
