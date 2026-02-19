@@ -950,3 +950,35 @@ input:focus, select:focus{
 .pickerItem .sub{display:block; font-size:12px; color: var(--muted); margin-top:4px}
 .pickerItem:hover{border-color: rgba(37,99,235,.55)}
 .pickerItem.danger{border-color: rgba(220,38,38,.35)}
+
+
+/* ===== v0.6.5 — Configurações (minimalista) ===== */
+.box--compact{min-height:auto; padding:12px}
+#view-categorias .sectionTitle{margin-bottom:10px}
+#view-categorias .box{margin-bottom:12px}
+#view-categorias .box__title p{margin-top:2px}
+#view-categorias .row2{gap:10px}
+
+/* Paleta de cores (substitui input type=color) */
+.palette{display:flex; flex-wrap:wrap; gap:8px; padding-top:2px}
+.palette .swatch{
+  width:22px; height:22px; border-radius:999px;
+  border:1px solid var(--stroke);
+  background: var(--c);
+  cursor:pointer;
+}
+.palette .swatch:hover{filter:brightness(1.05)}
+.palette .swatch.is-selected{
+  outline: 2px solid rgba(255,255,255,.55);
+  outline-offset: 2px;
+}
+
+/* Botão de excluir discreto (uso interno em Configurações) */
+.btn--dangerSoft{
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.25);
+  color: #ef4444;
+}
+.btn--dangerSoft:hover{background: rgba(239,68,68,.18)}
+
+#view-categorias .catTitle .catDot{width:10px;height:10px;display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.22)}

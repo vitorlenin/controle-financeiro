@@ -1,6 +1,6 @@
-const APP_VERSION = "v0.6.3";
-const BUILD_TIME = "19/02/2026 08:00";
-const BUILD_TIME_ISO = "2026-02-19T08:00:00";
+const APP_VERSION = "v0.6.5";
+const BUILD_TIME = "19/02/2026 10:00";
+const BUILD_TIME_ISO = "2026-02-19T10:00:00";
 
 // Firebase init (compat build for maximum browser support)
 // Note: firebase scripts are loaded in index.html before this file.
@@ -721,6 +721,15 @@ class UI {
     // Categorias
     this.catNome = this.$("catNome");
     this.catCor = this.$("catCor");
+    this.catCorPalette = this.$("catCorPalette");
+    this.dlgCatEdit = this.$("dlgCatEdit");
+    this.btnFecharCatEdit = this.$("btnFecharCatEdit");
+    this.btnCancelarCatEdit = this.$("btnCancelarCatEdit");
+    this.btnSalvarCatEdit = this.$("btnSalvarCatEdit");
+    this.editCatNome = this.$("editCatNome");
+    this.editCatCor = this.$("editCatCor");
+    this.editCatCorPalette = this.$("editCatCorPalette");
+    this.editCatMsg = this.$("editCatMsg");
     this.btnAddCat = this.$("btnAddCat");
     this.catMsg = this.$("catMsg");
     this.catsWrap = this.$("catsWrap");
@@ -825,6 +834,9 @@ class UI {
     if (this.versionBadge) {
       this.versionBadge.textContent = `(${APP_VERSION})`;
     }
+
+    this._initCategoryPalettes();
+    this._initCategoryEditDialog();
 
     const closeDrawer = () => {
       if (!this.drawer) return;
@@ -1495,7 +1507,7 @@ class UI {
     }
 
     const current = this.qCategoria.value;
-    const cats = (this.state.categories || []).slice().sort((a,b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const cats = (this.state.categories || []).slice().filter(c=>!isHiddenCategoryName(c.name)).sort((a,b) => a.name.localeCompare(b.name, 'pt-BR'));
     this.qCategoria.innerHTML = cats.map(c => `<option>${escapeHtml(c.name)}</option>`).join("");
 
     // Keep selection if possible
@@ -1507,7 +1519,7 @@ class UI {
   _populateSubSelect(catName) {
     if (!this.qSubcategoria) return;
     const name = (catName || this.qCategoria?.value || "").trim();
-    const cat = (this.state.categories || []).find(c => c.name === name);
+    const cat = (this.state.categories || []).find(c => !isHiddenCategoryName(c.name) && c.name === name);
     const subs = (cat?.subs || []).slice().sort((a,b)=>a.localeCompare(b,'pt-BR'));
     const current = this.qSubcategoria.value;
 
@@ -1521,9 +1533,115 @@ class UI {
 
   _getCatColorByName(name) {
     const n = String(name || "").trim();
-    const cat = (this.state.categories || []).find(c => c.name === n);
+    const cat = (this.state.categories || []).find(c => !isHiddenCategoryName(c.name) && c.name === n);
     return (cat?.color || "#2563EB").trim();
   }
+
+  _getDefaultCategoryPalette() {
+    // Paleta neutra (sem neon) para combinar com o tema escuro.
+    return [
+      "#2563EB", // blue
+      "#0EA5E9", // sky
+      "#14B8A6", // teal
+      "#22C55E", // green
+      "#F59E0B", // amber
+      "#A855F7", // purple
+      "#F43F5E", // rose
+      "#64748B"  // slate
+    ];
+  }
+
+  _mountPalette(paletteEl, inputEl) {
+    if (!paletteEl || !inputEl) return;
+    const colors = this._getDefaultCategoryPalette();
+    const cur = String(inputEl.value || colors[0]).trim();
+    paletteEl.innerHTML = colors.map(c => `
+      <button type="button" class="swatch ${c.toLowerCase()===cur.toLowerCase() ? 'is-selected':''}" style="--c:${c}" data-color="${c}" aria-label="Cor ${c}"></button>
+    `).join("");
+    paletteEl.querySelectorAll("[data-color]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const next = btn.getAttribute("data-color") || colors[0];
+        inputEl.value = next;
+        paletteEl.querySelectorAll(".swatch").forEach(b => b.classList.remove("is-selected"));
+        btn.classList.add("is-selected");
+      });
+    });
+  }
+
+  _initCategoryPalettes() {
+    // Palette for "Adicionar categoria"
+    this._mountPalette(this.catCorPalette, this.catCor);
+
+    // Palette for edit dialog
+    this._mountPalette(this.editCatCorPalette, this.editCatCor);
+  }
+
+  _initCategoryEditDialog() {
+    if (!this.dlgCatEdit) return;
+
+    const close = () => {
+      try { this.dlgCatEdit.close(); } catch (_) {}
+    };
+
+    this.btnFecharCatEdit?.addEventListener("click", close);
+    this.btnCancelarCatEdit?.addEventListener("click", close);
+
+    this.dlgCatEdit.addEventListener("click", (ev) => {
+      // click outside dialog closes
+      if (ev.target === this.dlgCatEdit) close();
+    });
+
+    this.btnSalvarCatEdit?.addEventListener("click", async () => {
+      try {
+        await this._requireLogin();
+        this.editCatMsg.textContent = "";
+        const catId = this._editingCatId;
+        if (!catId) return close();
+
+        const cats = (this.state.categories || []).slice();
+        const idx = cats.findIndex(c => c.id === catId);
+        if (idx < 0) return close();
+
+        const nextName = (this.editCatNome?.value || "").trim();
+        const nextColor = (this.editCatCor?.value || "#2563EB").trim();
+
+        if (!nextName) throw new Error("Informe um nome.");
+        if (isHiddenCategoryName(nextName)) throw new Error('O nome "Cartão" é reservado. Use outro nome.');
+
+        // unique name
+        const norm = normalizeKey(nextName);
+        const dup = cats.some((c,i) => i !== idx && normalizeKey(c.name) === norm);
+        if (dup) throw new Error("Já existe uma categoria com esse nome.");
+
+        cats[idx] = { ...cats[idx], name: nextName, color: nextColor };
+        this.state.categories = await this.catSvc.save(cats);
+        this._syncCategorySelects();
+        this.renderCategorias();
+        if (this.state.route === "lancamentos") this.renderLancamentos();
+        this._renderDashboard();
+
+        close();
+      } catch (e) {
+        this.editCatMsg.textContent = e.message || "Erro ao salvar.";
+      }
+    });
+  }
+
+  _openCategoryEdit(catId) {
+    const cats = (this.state.categories || []).slice();
+    const cat = cats.find(c => c.id === catId);
+    if (!cat || !this.dlgCatEdit) return;
+
+    this._editingCatId = catId;
+    this.editCatMsg.textContent = "";
+    this.editCatNome.value = cat.name || "";
+    this.editCatCor.value = (cat.color || "#2563EB").trim();
+    // remount palette so selection matches
+    this._mountPalette(this.editCatCorPalette, this.editCatCor);
+
+    try { this.dlgCatEdit.showModal(); } catch (_) { this.dlgCatEdit.setAttribute("open",""); }
+  }
+
 
   _fmtCatPill(tx) {
     const label = this._fmtCat(tx);
@@ -1588,7 +1706,7 @@ class UI {
   _populateRecSubSelect(catName) {
     if (!this.recSubcategoria) return;
     const name = (catName || this.recCategoria?.value || "").trim();
-    const cat = (this.state.categories || []).find(c => c.name === name);
+    const cat = (this.state.categories || []).find(c => !isHiddenCategoryName(c.name) && c.name === name);
     const subs = (cat?.subs || []).slice().sort((a,b)=>a.localeCompare(b,'pt-BR'));
     const opts = [`<option value="">—</option>`].concat(subs.map(s => `<option>${escapeHtml(s)}</option>`));
     this.recSubcategoria.innerHTML = opts.join("");
@@ -1713,6 +1831,7 @@ class UI {
 
     this.catsWrap.innerHTML = "";
     for (const cat of cats) {
+      if (isHiddenCategoryName(cat.name)) continue;
       const el = document.createElement("div");
       el.className = "catItem";
       el.innerHTML = `
@@ -1722,9 +1841,8 @@ class UI {
             <div class="muted small">${(cat.subs||[]).length} subcategoria(s)</div>
           </div>
           <div class="catActions">
-            <input class="miniColor" title="Cor" aria-label="Cor" data-cat-color="${cat.id}" type="color" value="${escapeHtml((cat.color||'#2563EB'))}" />
             <button class="btn btn--ghost miniBtn" data-cat-edit="${cat.id}">Editar</button>
-            <button class="btn btn--danger miniBtn" data-cat-del="${cat.id}">Excluir</button>
+            <button class="btn btn--dangerSoft miniBtn" data-cat-del="${cat.id}">Excluir</button>
           </div>
         </div>
 
@@ -1749,26 +1867,8 @@ class UI {
       `;
 
       // Category actions
-      el.querySelector("[data-cat-edit]")?.addEventListener("click", () => this._editCategory(cat.id));
+      el.querySelector("[data-cat-edit]")?.addEventListener("click", () => this._openCategoryEdit(cat.id));
       el.querySelector("[data-cat-del]")?.addEventListener("click", () => this._deleteCategory(cat.id));
-
-      // Color change
-      el.querySelector("[data-cat-color]")?.addEventListener("input", async (ev) => {
-        try {
-          const nextColor = String(ev.target.value || "#2563EB").trim();
-          const all = (this.state.categories || []).slice();
-          const i = all.findIndex(c => c.id === cat.id);
-          if (i < 0) return;
-          all[i] = { ...all[i], color: nextColor };
-          this.state.categories = await this.catSvc.save(all);
-          this._syncCategorySelects();
-          // refresh visuals
-          if (this.state.route === "lancamentos") this.renderLancamentos();
-          this._renderDashboard();
-        } catch (e) {
-          alert(e.message || "Erro ao salvar cor.");
-        }
-      });
 
       // Add subcategory
       el.querySelector("[data-sub-add]")?.addEventListener("click", () => this._addSubcategory(cat.id));
@@ -2391,7 +2491,9 @@ class UI {
       if (tx.type === "saida") {
         saidas += v;
         const k = tx.category || "Outros";
-        cats.set(k, (cats.get(k) || 0) + v);
+        if (!isHiddenCategoryName(k)) {
+          cats.set(k, (cats.get(k) || 0) + v);
+        }
       }
     }
 
@@ -2526,6 +2628,17 @@ function fmtSource(src) {
   if (src === "renda_extra") return "Renda extra";
   return "Outros";
 }
+
+function normalizeKey(s){
+  return String(s||"")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().trim();
+}
+function isHiddenCategoryName(name){
+  // Mantém a categoria no banco (segurança), mas esconde do usuário.
+  return normalizeKey(name) === "cartao";
+}
+
 function escapeHtml(s) {
   return String(s)
     .replaceAll("&","&amp;")

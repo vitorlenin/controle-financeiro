@@ -107,7 +107,7 @@
   <div class="forecastHint muted small" id="saldoPrevistoHint">Inclui lançamentos futuros e recorrentes.</div>
 </div>
 <div class="grid2">
-<div class="box">
+<div class="box box--compact">
 <div class="box__title">
 <h3>Visão rápida</h3>
 <p class="muted small">Gastos por categoria (mês atual).</p>
@@ -123,7 +123,7 @@
 <div class="chartEmpty" id="chartEmpty">Sem dados para exibir.</div>
 </div>
 </div>
-<div class="box">
+<div class="box box--compact">
 <div class="box__title">
 <h3>Atalhos</h3>
 <p class="muted small">Adicionar lançamento rápido.</p>
@@ -231,7 +231,7 @@
 <p class="hint">Você pode ver em <b>cards</b> e em <b>tabela</b>. Filtros valem para os dois.</p>
 </div>
 </div>
-<div class="box">
+<div class="box box--compact">
 <div class="filters">
 <label class="field">
 <span>Mês</span>
@@ -471,9 +471,10 @@
 <span>Nome da categoria</span>
 <input id="catNome" placeholder="Ex: Pets, Educação, Impostos" type="text"/>
 </label>
-<label class="field" style="max-width:140px;">
-<span>Cor</span>
-<input id="catCor" type="color" value="#2563EB"/>
+<label class="field" style="max-width:240px;">
+  <span>Cor</span>
+  <input id="catCor" type="hidden" value="#2563EB"/>
+  <div class="palette" id="catCorPalette" aria-label="Selecionar cor da categoria"></div>
 </label>
 <button class="btn btn--primary" id="btnAddCat" type="button">Adicionar</button>
 </div>
@@ -605,6 +606,38 @@
     </div>
   </div>
 </dialog>
+
+<dialog class="dlg" id="dlgCatEdit">
+  <div class="dlg__head">
+    <div>
+      <div class="dlg__title">Editar categoria</div>
+      <div class="muted small">Altere o nome e a cor da categoria.</div>
+    </div>
+    <button class="btn btn--ghost" id="btnFecharCatEdit" type="button">Fechar</button>
+  </div>
+  <div class="dlg__body">
+    <div class="boxInner">
+      <div class="row2">
+        <label class="field" style="flex:1;">
+          <span>Nome</span>
+          <input id="editCatNome" type="text"/>
+        </label>
+        <label class="field" style="max-width:260px;">
+          <span>Cor</span>
+          <input id="editCatCor" type="hidden" value="#2563EB"/>
+          <div class="palette" id="editCatCorPalette" aria-label="Selecionar cor da categoria"></div>
+        </label>
+      </div>
+      <div class="row2" style="margin-top:12px;">
+        <button class="btn btn--primary" id="btnSalvarCatEdit" type="button">Salvar</button>
+        <button class="btn btn--ghost" id="btnCancelarCatEdit" type="button">Cancelar</button>
+      </div>
+      <div class="formMsg" id="editCatMsg"></div>
+    </div>
+  </div>
+</dialog>
+
+
 
 
 </div>
