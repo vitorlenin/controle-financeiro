@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+
+<html lang="pt-br">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="#0b1220" name="theme-color"/>
+<title>Controle Financeiro</title>
+<link href="/favicon.png" rel="icon"/>
+<!-- Fonte padrão de sistemas (SaaS) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="./manifest.json" rel="manifest">
+<link href="./css/styles.css" rel="stylesheet"/>
+</link></head>
+<body>
+<div class="app">
+<header class="topbar"><div class="leftControls">
+<button aria-label="Menu" class="iconBtn mobileOnly" id="btnMenu" title="Menu" type="button">☰</button>
+<button aria-label="Voltar" class="btn btn--ghost btnBack" id="btnBack" style="display:none;" title="Voltar" type="button">
+          ←
+          <span class="btnBack__text">Voltar</span>
+</button>
+</div><div aria-label="Identificação do app" class="brand"><div class="brand__title">Controle Financeiro <span class="muted" id="versionBadge">(v0.5.3)</span></div></div><div class="actions">
+<button class="btn btn--ghost" id="btnLogout" style="display:none;" title="Sair">Sair</button>
+<button class="btn btn--primary" id="btnLogin">G Entrar com Google</button>
+</div><div aria-label="Status e versão" class="topmeta"><div class="muted small" id="versionInfo">v0.5.3 • Atualizado em 18/02/2026 22:18</div><div class="pill" id="authStatus">Deslogado</div></div><nav class="tabs">
+<button class="tab is-active" data-route="dashboard">Dashboard</button>
+<button class="tab" data-route="lancamentos">Lançamentos</button>
+<button class="tab" data-route="relatorios">Relatórios</button>
+<button class="tab" data-route="categorias">Categorias</button>
+<button class="tab" data-route="backup">Backup / Import</button>
+</nav></header>
+<aside aria-hidden="true" class="drawer" id="drawer">
+<div class="drawer__backdrop" id="drawerBackdrop"></div>
+<div class="drawer__panel">
+<div class="drawer__title">Menu</div>
+<button class="drawer__item" data-route="dashboard" type="button">Dashboard</button>
+<button class="drawer__item" data-route="lancamentos" type="button">Lançamentos</button>
+<button class="drawer__item" data-route="relatorios" type="button">Relatórios</button>
+<button class="drawer__item" data-route="categorias" type="button">Categorias</button>
+<button class="drawer__item" data-route="backup" type="button">Backup / Import</button>
+</div>
+</aside>
+<main class="panel">
+<section class="view is-visible" id="view-dashboard">
+<div class="sectionTitle">
+<div>
+<h2>Resumo • Mês atual</h2>
+<p class="hint">Dica: clique em um card para filtrar a lista de lançamentos.</p>
+</div>
+</div>
+<div class="cards">
+<button class="card card--blue" data-filter="saldo" id="cardSaldo" type="button">
+<div class="card__header">
+<span>Saldo do mês</span>
+<span class="badge">💰</span>
+</div>
+<div class="card__value" id="saldoMes">R$ 0,00</div>
+<div class="card__footer">
+<span class="muted">Total de lançamentos</span>
+<span id="totalLanc">0</span>
+</div>
+</button>
+<button class="card card--green" data-filter="entradas" id="cardEntradas" type="button">
+<div class="card__header">
+<span>Entradas</span>
+<span class="badge">🧾</span>
+</div>
+<div class="card__value" id="entradasMes">R$ 0,00</div>
+<div class="card__footer">
+<span class="muted">Salário fixo</span>
+<span id="entradasFixas">R$ 0,00</span>
+</div>
+</button>
+<button class="card card--red" data-filter="saidas" id="cardSaidas" type="button">
+<div class="card__header">
+<span>Saídas</span>
+<span class="badge">📉</span>
+</div>
+<div class="card__value" id="saidasMes">R$ 0,00</div>
+<div class="card__footer">
+<span class="muted">Top categoria</span>
+<span id="topCat">—</span>
+</div>
+</button>
+<button class="card card--gold" data-filter="renda_extra" id="cardExtra" type="button">
+<div class="card__header">
+<span>Renda extra</span>
+<span class="badge">⭐</span>
+</div>
+<div class="card__value" id="extraMes">R$ 0,00</div>
+<div class="card__footer">
+<span class="muted">Entradas (extra)</span>
+<span id="qtExtra">0</span>
+</div>
+</button>
+</div>
+
+<div class="forecastBar">
+  <div class="forecastTitle">Previsão</div>
+  <div class="forecastItems">
+    <div class="forecastItem"><span class="muted">Saldo até hoje</span> <b id="saldoAteHoje">R$ 0,00</b></div>
+    <div class="forecastItem"><span class="muted">Saldo previsto (fim do mês)</span> <b id="saldoPrevisto">R$ 0,00</b></div>
+  </div>
+  <div class="forecastHint muted small" id="saldoPrevistoHint">Inclui lançamentos futuros e recorrentes.</div>
+</div>
+<div class="grid2">
+<div class="box">
+<div class="box__title">
+<h3>Visão rápida</h3>
+<p class="muted small">Gastos por categoria (mês atual).</p>
+</div>
+<div class="chartWrap">
+<div class="chartHeader">
+<div class="muted small">Pizza + legenda</div>
+</div>
+<div class="pieGrid">
+<canvas height="260" id="pieCanvas" width="420"></canvas>
+<div class="legend" id="pieLegend"></div>
+</div>
+<div class="chartEmpty" id="chartEmpty">Sem dados para exibir.</div>
+</div>
+</div>
+<div class="box">
+<div class="box__title">
+<h3>Atalhos</h3>
+<p class="muted small">Adicionar lançamento rápido.</p>
+</div>
+<form class="form" id="quickForm">
+<div class="row2">
+<label class="field">
+<span>Descrição *</span>
+<input id="qDesc" placeholder="Ex: Mercado, Internet, Salário" required="" type="text"/>
+</label>
+<label class="field">
+<span>Valor (R$) *</span>
+<input id="qValor" min="0" placeholder="0,00" required="" step="0.01" type="number"/>
+</label>
+</div>
+<div class="row2">
+<label class="field">
+<span>Tipo</span>
+<select id="qTipo">
+<option value="saida">Saída</option>
+<option value="entrada">Entrada</option>
+</select>
+</label>
+<label class="field">
+<span>Fonte</span>
+<select id="qFonte">
+<option value="salario_fixo">Salário fixo</option>
+<option value="renda_extra">Renda extra</option>
+<option value="outros">Outros</option>
+</select>
+</label>
+</div>
+<div class="row2">
+<label class="field">
+<span>Categoria</span>
+<select id="qCategoria">
+<option>Agua</option>
+<option>Alimentação</option>
+<option>Cartão</option>
+<option>Celular</option>
+<option>Combustível</option>
+<option>Internet</option>
+<option>Lazer</option>
+<option>Mercado</option>
+<option>Moradia</option>
+<option>Saúde</option>
+<option>Transporte</option>
+<option>Outros</option>
+</select>
+</label>
+<label class="field">
+<span>Subcategoria</span>
+<select id="qSubcategoria">
+<option value="">—</option>
+</select>
+</label>
+<label class="field">
+<span>Data</span>
+<input id="qData" type="date"/>
+</label>
+</div>
+<!-- Shown when editing a launch: allow converting a normal launch into recurring -->
+<div class="row2" id="qRecRow" style="display:none; align-items:center;">
+  <label class="check">
+    <input id="qMakeRecurring" type="checkbox"/>
+    <span>Tornar recorrente</span>
+  </label>
+  <div class="muted small" id="qMakeRecurringNote" style="justify-self:end; text-align:right;"></div>
+</div>
+<div class="row2 actionsRow">
+<button class="btn btn--primary" id="btnSalvar" type="submit">Salvar</button>
+<button class="btn btn--ghost" id="btnVerLanc" type="button">Ver lançamentos</button>
+</div>
+<div class="quickMsgRow"><div class="formMsg" id="quickMsg"></div><button class="btn btn--ghost btn--sm" id="btnLimparEdicao" type="button" style="display:none;">Limpar</button></div>
+</form>
+</div>
+</div>
+</section>
+<section class="view" id="view-lancamentos">
+<div class="sectionTitle">
+<div>
+<h2>Lançamentos</h2>
+<p class="hint">Você pode ver em <b>cards</b> e em <b>tabela</b>. Filtros valem para os dois.</p>
+</div>
+</div>
+<div class="box">
+<div class="filters">
+<label class="field">
+<span>Mês</span>
+<input id="fMes" type="month"/>
+</label>
+<label class="field">
+<span>Tipo</span>
+<select id="fTipo">
+<option value="todos">Todos</option>
+<option value="entrada">Entrada</option>
+<option value="saida">Saída</option>
+</select>
+</label>
+<label class="field">
+<span>Fonte</span>
+<select id="fFonte">
+<option value="todas">Todas</option>
+<option value="salario_fixo">Salário fixo</option>
+<option value="renda_extra">Renda extra</option>
+<option value="outros">Outros</option>
+</select>
+</label>
+<label class="field">
+<span>Buscar</span>
+<input id="fBusca" placeholder="Descrição ou categoria..." type="text"/>
+</label>
+<button class="btn btn--ghost" id="btnLimparFiltro" type="button">Limpar</button>
+<button class="btn btn--ghost" id="btnRecorrentes" type="button">Recorrentes</button>
+</div>
+<div class="viewToggle">
+<button class="seg is-active" id="segCards" type="button">Cards</button>
+<button class="seg" id="segTabela" type="button">Tabela</button>
+</div>
+<div class="cardsList" id="cardsLanc"></div>
+<div class="tableWrap" id="tableWrap">
+<table class="table">
+<thead>
+<tr>
+<th>Data</th>
+<th>Descrição</th>
+<th>Categoria</th>
+<th>Tipo</th>
+<th>Fonte</th>
+<th class="right">Valor</th>
+<th class="right">Ações</th>
+</tr>
+</thead>
+<tbody id="tbodyLanc"></tbody>
+</table>
+</div>
+<div class="empty" id="emptyLanc">Nenhum lançamento encontrado.</div>
+</div>
+</section>
+
+<dialog class="dlg" id="dlgRecorrentes">
+  <div class="dlg__head">
+    <div>
+      <div class="dlg__title">Lançamentos recorrentes</div>
+      <div class="muted small">Cria lançamentos automaticamente todo mês (quando você abrir o app).</div>
+    </div>
+    <button class="btn btn--ghost" id="btnFecharRec" type="button">Fechar</button>
+  </div>
+
+  <div class="dlg__body">
+    <div class="boxInner" style="margin-bottom:12px;">
+      <h3 class="h3" id="recFormTitle">Adicionar recorrente</h3>
+      <div class="row2">
+        <label class="field">
+          <span>Descrição</span>
+          <input id="recDesc" placeholder="Ex: Internet" type="text"/>
+        </label>
+        <label class="field">
+          <span>Valor</span>
+          <input id="recValor" min="0" placeholder="0" step="0.01" type="number"/>
+        </label>
+      </div>
+      <div class="row3">
+        <label class="field">
+          <span>Dia do mês</span>
+          <input id="recDia" max="31" min="1" step="1" type="number" value="5"/>
+        </label>
+        <label class="field">
+          <span>Tipo</span>
+          <select id="recTipo">
+            <option value="saida">Saída</option>
+            <option value="entrada">Entrada</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Fonte</span>
+          <select id="recFonte">
+            <option value="outros">Outros</option>
+            <option value="salario_fixo">Salário fixo</option>
+            <option value="renda_extra">Renda extra</option>
+          </select>
+        </label>
+      </div>
+      <div class="row3">
+        <label class="field">
+          <span>Categoria</span>
+          <select id="recCategoria"></select>
+        </label>
+        <label class="field">
+          <span>Subcategoria</span>
+          <select id="recSubcategoria"></select>
+        </label>
+        <label class="field">
+          <span>Começar em</span>
+          <input id="recStart" type="month"/>
+        </label>
+      </div>
+      <div class="row2 recActionsRow" style="align-items:center;">
+        <label class="check">
+          <input id="recAtivo" checked type="checkbox"/>
+          <span>Ativo</span>
+        </label>
+        <div class="recActions">
+          <button class="btn btn--ghost" id="btnRecCancelar" type="button">Cancelar</button>
+          <button class="btn btn--primary" id="btnRecSalvar" type="button">Salvar</button>
+        </div>
+      </div>
+      <div class="formMsg" id="recMsg"></div>
+    </div>
+
+    <div class="boxInner">
+      <h3 class="h3">Lista</h3>
+      <div id="recWrap"></div>
+      <div class="muted small" style="margin-top:10px;">Dica: os lançamentos gerados ficam no mês correspondente e podem ser editados normalmente.</div>
+    </div>
+  </div>
+</dialog>
+<section class="view" id="view-relatorios">
+<div class="sectionTitle">
+<div>
+<h2>Relatórios</h2>
+<p class="hint">Mensal e semanal, com exportação CSV e “PDF” via impressão.</p>
+</div>
+</div>
+<div class="box">
+<div class="filters reportFilters">
+<label class="field">
+<span>Modo</span>
+<select id="rModo">
+<option value="mensal">Mensal</option>
+<option value="semanal">Semanal</option>
+<option value="periodo">Período</option>
+</select>
+</label>
+<label class="field" id="wrapMes">
+<span>Mês</span>
+<input id="rMes" type="month"/>
+</label>
+<label class="field" id="wrapSemana">
+<span>Semana (qualquer dia)</span>
+<input id="rSemana" type="date"/>
+</label>
+<label class="field" id="wrapDe">
+<span>De</span>
+<input id="rDe" type="date"/>
+</label>
+<label class="field" id="wrapAte">
+<span>Até</span>
+<input id="rAte" type="date"/>
+</label>
+<button class="btn btn--primary" id="btnGerarRel" type="button">Gerar</button>
+</div>
+<div class="reportActions">
+<button class="btn btn--ghost" id="btnCsv" type="button">Exportar CSV</button>
+<button class="btn btn--ghost" id="btnPdf" type="button">Exportar PDF</button>
+</div>
+<div class="reportGrid">
+<div class="reportCard">
+<div class="muted">Entradas</div>
+<div class="big" id="repEntradas">R$ 0,00</div>
+<div class="muted small">Salário fixo + renda extra em destaque</div>
+<div class="miniRow">
+<span class="miniTag">Fixas</span><span id="repFixas">R$ 0,00</span>
+</div>
+<div class="miniRow">
+<span class="miniTag">Extra</span><span id="repExtra">R$ 0,00</span>
+</div>
+</div>
+<div class="reportCard">
+<div class="muted">Saídas</div>
+<div class="big" id="repSaidas">R$ 0,00</div>
+<div class="muted small">Top categoria + distribuição</div>
+</div>
+<div class="reportCard">
+<div class="muted">Saldo</div>
+<div class="big" id="repSaldo">R$ 0,00</div>
+<div class="muted small" id="repPeriodo">—</div>
+</div>
+</div>
+<div class="boxInner">
+<h3 class="h3">Gastos por categoria</h3>
+<div class="chips" id="repCats"></div>
+</div>
+<div aria-hidden="true" class="printArea" id="printArea"></div>
+</div>
+</section>
+<section class="view" id="view-categorias">
+<div class="sectionTitle">
+<div>
+<h2>Categorias</h2>
+<p class="hint">Gerenciar / editar / excluir <b>categorias</b> e <b>subcategorias</b>.</p>
+</div>
+</div>
+
+<div class="box">
+<div class="box__title">
+<h3>Adicionar categoria</h3>
+<p class="muted small">As categorias aparecem no cadastro de lançamentos.</p>
+</div>
+<div class="row2" style="align-items:flex-end;">
+<label class="field">
+<span>Nome da categoria</span>
+<input id="catNome" placeholder="Ex: Pets, Educação, Impostos" type="text"/>
+</label>
+<label class="field" style="max-width:140px;">
+<span>Cor</span>
+<input id="catCor" type="color" value="#2563EB"/>
+</label>
+<button class="btn btn--primary" id="btnAddCat" type="button">Adicionar</button>
+</div>
+<div class="formMsg" id="catMsg"></div>
+</div>
+
+<div class="box">
+<div class="box__title">
+<h3>Lista</h3>
+<p class="muted small">Clique em editar/excluir para gerenciar. Excluir não apaga lançamentos antigos.</p>
+</div>
+<div id="catsWrap"></div>
+</div>
+</section>
+
+<section class="view" id="view-backup">
+<div class="sectionTitle">
+<div>
+<h2>Backup / Import</h2>
+<p class="hint">Exporta e importa seus lançamentos (JSON). Útil para manter versões estáveis.</p>
+</div>
+</div>
+<div class="box">
+<div class="backupGrid">
+<div class="boxInner">
+<h3 class="h3">Exportar</h3>
+<p class="muted small">Gera um arquivo JSON com todos os lançamentos do seu usuário.</p>
+<button class="btn btn--primary" id="btnExportar" type="button">Baixar backup</button>
+<div class="formMsg" id="bkMsg"></div>
+</div>
+<div class="boxInner">
+<h3 class="h3">Importar</h3>
+<p class="muted small">Selecione um JSON exportado. Você pode escolher “Mesclar” ou “Substituir”.</p>
+<label class="field">
+<span>Arquivo JSON</span>
+<input accept="application/json" id="fileImport" type="file"/>
+</label>
+<div class="row2">
+<button class="btn btn--ghost" id="btnImportMesclar" type="button">Importar (mesclar)</button>
+<button class="btn btn--danger" id="btnImportSubst" type="button">Importar (substituir)</button>
+</div>
+<div class="formMsg" id="imMsg"></div>
+</div>
+</div>
+</div>
+</section>
+<footer class="footer">
+<span class="muted small">Dados por usuário • Firestore • HTML/JS puro • Vitor Lenin</span>
+</footer>
+</main>
+</div>
+<!-- Firebase (compat) for maximum browser support -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+<script defer="" src="./js/app.js"></script>
+<script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").then((reg) => {
+        // força checar updates sempre que abrir
+        reg.update().catch(()=>{});
+
+        // Se existir uma versão nova esperando, ativa e recarrega
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
+        reg.addEventListener("updatefound", () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              newWorker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          // quando a nova SW assume controle, recarrega para pegar arquivos atualizados.
+          // Porém, durante login via Redirect (mobile), um reload pode interromper o retorno do Google.
+          try {
+            if (sessionStorage.getItem("cf_auth_redirect") === "1") return;
+          } catch (_) {}
+          window.location.reload();
+        });
+      }).catch(()=>{});
+    }
+  </script>
+</body>
+</html>
