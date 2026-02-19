@@ -856,3 +856,13 @@ input:focus, select:focus{
 }
 .quickMsgRow .formMsg{flex:1}
 .btn--sm{padding:8px 12px; font-size: 12px; line-height: 1.1}
+
+
+/* Credit cards / invoices */
+.cardItemRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:var(--panel);margin-bottom:8px;}
+.cardItemRow .left{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cardItemRow .title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cardItemRow .meta{color:var(--muted);font-size:12px}
+.cardItemRow .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.txPayPill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:var(--muted);font-size:12px;line-height:1.2}
+

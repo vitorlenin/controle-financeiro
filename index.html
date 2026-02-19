@@ -22,10 +22,10 @@
           ←
           <span class="btnBack__text">Voltar</span>
 </button>
-</div><div aria-label="Identificação do app" class="brand"><div class="brand__title">Controle Financeiro <span class="muted" id="versionBadge">(v0.5.3)</span></div></div><div class="actions">
+</div><div aria-label="Identificação do app" class="brand"><div class="brand__title">Controle Financeiro <span class="muted" id="versionBadge">(v0.6.0)</span></div></div><div class="actions">
 <button class="btn btn--ghost" id="btnLogout" style="display:none;" title="Sair">Sair</button>
 <button class="btn btn--primary" id="btnLogin">G Entrar com Google</button>
-</div><div aria-label="Status e versão" class="topmeta"><div class="muted small" id="versionInfo">v0.5.3 • Atualizado em 18/02/2026 22:18</div><div class="pill" id="authStatus">Deslogado</div></div><nav class="tabs">
+</div><div aria-label="Status e versão" class="topmeta"><div class="muted small" id="versionInfo">v0.6.0 • Atualizado em 19/02/2026 08:00</div><div class="pill" id="authStatus">Deslogado</div></div><nav class="tabs">
 <button class="tab is-active" data-route="dashboard">Dashboard</button>
 <button class="tab" data-route="lancamentos">Lançamentos</button>
 <button class="tab" data-route="relatorios">Relatórios</button>
@@ -185,6 +185,24 @@
 <input id="qData" type="date"/>
 </label>
 </div>
+
+<div class="row3" id="qPayRow">
+  <label class="field">
+    <span>Pagamento</span>
+    <select id="qPayMethod">
+      <option value="dinheiro">Dinheiro</option>
+      <option value="pix">Pix</option>
+      <option value="debito">Débito</option>
+      <option value="credito">Cartão de crédito</option>
+    </select>
+  </label>
+  <label class="field" id="qCardWrap" style="display:none;">
+    <span>Cartão</span>
+    <select id="qCard"></select>
+  </label>
+  <div class="muted small" id="qInvoiceHint" style="align-self:end; text-align:right;"></div>
+</div>
+
 <!-- Shown when editing a launch: allow converting a normal launch into recurring -->
 <div class="row2" id="qRecRow" style="display:none; align-items:center;">
   <label class="check">
@@ -233,6 +251,17 @@
 </select>
 </label>
 <label class="field">
+<span>Pagamento</span>
+<select id="fPay">
+<option value="todas">Todos</option>
+<option value="dinheiro">Dinheiro</option>
+<option value="pix">Pix</option>
+<option value="debito">Débito</option>
+<option value="credito">Cartão de crédito</option>
+</select>
+</label>
+</label>
+<label class="field">
 <span>Buscar</span>
 <input id="fBusca" placeholder="Descrição ou categoria..." type="text"/>
 </label>
@@ -253,6 +282,7 @@
 <th>Categoria</th>
 <th>Tipo</th>
 <th>Fonte</th>
+<th>Pagamento</th>
 <th class="right">Valor</th>
 <th class="right">Ações</th>
 </tr>
@@ -379,6 +409,7 @@
 <div class="reportActions">
 <button class="btn btn--ghost" id="btnCsv" type="button">Exportar CSV</button>
 <button class="btn btn--ghost" id="btnPdf" type="button">Exportar PDF</button>
+<button class="btn btn--ghost" id="btnCartoes" type="button">Cartões / Faturas</button>
 </div>
 <div class="reportGrid">
 <div class="reportCard">
@@ -481,6 +512,89 @@
 <span class="muted small">Dados por usuário • Firestore • HTML/JS puro • Vitor Lenin</span>
 </footer>
 </main>
+
+
+<dialog class="dlg" id="dlgCartoes">
+  <div class="dlg__head">
+    <div>
+      <div class="dlg__title">Cartões e Faturas</div>
+      <div class="muted small">Marque compras no cartão e veja a fatura por mês (com fechamento/vencimento).</div>
+    </div>
+    <button class="btn btn--ghost" id="btnFecharCartoes" type="button">Fechar</button>
+  </div>
+
+  <div class="dlg__body">
+    <div class="grid2">
+      <div class="boxInner">
+        <h3 class="h3" id="cardFormTitle">Adicionar cartão</h3>
+        <div class="row2">
+          <label class="field">
+            <span>Nome do cartão</span>
+            <input id="cardNome" placeholder="Ex: Nubank" type="text"/>
+          </label>
+          <label class="field">
+            <span>Limite (opcional)</span>
+            <input id="cardLimite" min="0" placeholder="0" step="0.01" type="number"/>
+          </label>
+        </div>
+        <div class="row2">
+          <label class="field">
+            <span>Fechamento (dia)</span>
+            <input id="cardFechamento" max="28" min="1" step="1" type="number" value="10"/>
+          </label>
+          <label class="field">
+            <span>Vencimento (dia)</span>
+            <input id="cardVencimento" max="28" min="1" step="1" type="number" value="5"/>
+          </label>
+        </div>
+        <div class="row2 actionsRow">
+          <button class="btn btn--ghost" id="btnCardCancelar" type="button">Cancelar</button>
+          <button class="btn btn--primary" id="btnCardSalvar" type="button">Salvar</button>
+        </div>
+        <div class="formMsg" id="cardMsg"></div>
+      </div>
+
+      <div class="boxInner">
+        <h3 class="h3">Fatura</h3>
+        <div class="row2">
+          <label class="field">
+            <span>Cartão</span>
+            <select id="fatCard"></select>
+          </label>
+          <label class="field">
+            <span>Mês da fatura</span>
+            <input id="fatMes" type="month"/>
+          </label>
+        </div>
+
+        <div class="forecastBar" style="margin-top:10px;">
+          <div class="forecastTitle">Resumo</div>
+          <div class="forecastItems">
+            <div class="forecastItem"><span class="muted">Total</span> <b id="fatTotal">R$ 0,00</b></div>
+            <div class="forecastItem"><span class="muted">Status</span> <b id="fatStatus">Em aberto</b></div>
+          </div>
+          <div class="forecastHint muted small" id="fatDatas">Fechamento: — • Vencimento: —</div>
+        </div>
+
+        <div class="row2" style="margin-top:10px; align-items:center;">
+          <button class="btn btn--ghost" id="btnFatMarcarPaga" type="button">Marcar como paga</button>
+          <button class="btn btn--ghost" id="btnFatDesmarcar" type="button">Desmarcar</button>
+        </div>
+
+        <div class="cardsList" id="fatLista" style="margin-top:10px;"></div>
+        <div class="empty" id="fatEmpty" style="display:none;">Sem compras no cartão neste mês.</div>
+        <div class="muted small" style="margin-top:10px;">Dica: compras no cartão entram na fatura conforme o dia de fechamento.</div>
+      </div>
+    </div>
+
+    <div class="boxInner" style="margin-top:12px;">
+      <h3 class="h3">Meus cartões</h3>
+      <div id="cardsWrap"></div>
+    </div>
+  </div>
+</dialog>
+
+
 </div>
 <!-- Firebase (compat) for maximum browser support -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>

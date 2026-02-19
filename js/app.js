@@ -1,6 +1,6 @@
-const APP_VERSION = "v0.5.3";
-const BUILD_TIME = "19/02/2026 00:55";
-const BUILD_TIME_ISO = "2026-02-19T00:55:00";
+const APP_VERSION = "v0.6.0";
+const BUILD_TIME = "19/02/2026 08:00";
+const BUILD_TIME_ISO = "2026-02-19T08:00:00";
 
 // Firebase init (compat build for maximum browser support)
 // Note: firebase scripts are loaded in index.html before this file.
@@ -169,6 +169,121 @@ class CategoryService {
  * users/{uid}/meta/recurring
  * doc = { version, updatedAt, rules: [{ id, description, amount, type, source, category, subcategory, day, startMonth, endMonth?, active }] }
  */
+
+
+/**
+ * Firestore:
+ * users/{uid}/meta/cards
+ * doc = { version, updatedAt, cards: [{ id, name, closingDay, dueDay, limit }] }
+ */
+class CardService {
+  constructor(getUid) { this.getUid = getUid; }
+  _docRef() {
+    const uid = this.getUid();
+    if (!uid) throw new Error("Sem usuário logado.");
+    return f.doc(db, `users/${uid}/meta/cards`);
+  }
+
+  static defaultCards() { return []; }
+
+  async loadOrSeed() {
+    const ref = this._docRef();
+    const snap = await f.getDoc(ref);
+    if (!snap.exists) {
+      const payload = { version: 1, updatedAt: f.serverTimestamp(), cards: CardService.defaultCards() };
+      await f.setDoc(ref, payload);
+      return payload.cards;
+    }
+    const data = snap.data() || {};
+    const cards = Array.isArray(data.cards) ? data.cards : [];
+    return cards.map(c => ({
+      id: String(c.id || cryptoRandomId()),
+      name: String(c.name || "").trim(),
+      closingDay: Math.min(28, Math.max(1, Number(c.closingDay || 10))),
+      dueDay: Math.min(28, Math.max(1, Number(c.dueDay || 5))),
+      limit: Number(c.limit || 0) > 0 ? Number(c.limit) : 0,
+    })).filter(c => c.name);
+  }
+
+  async save(cards) {
+    const ref = this._docRef();
+    const clean = (cards || []).map(c => ({
+      id: String(c.id || cryptoRandomId()),
+      name: String(c.name || "").trim(),
+      closingDay: Math.min(28, Math.max(1, Number(c.closingDay || 10))),
+      dueDay: Math.min(28, Math.max(1, Number(c.dueDay || 5))),
+      limit: Number(c.limit || 0) > 0 ? Number(c.limit) : 0,
+    })).filter(c => c.name);
+    await f.setDoc(ref, { version: 1, updatedAt: f.serverTimestamp(), cards: clean }, { merge: true });
+    return clean;
+  }
+}
+
+/**
+ * Firestore:
+ * users/{uid}/meta/cardInvoices
+ * doc = { version, updatedAt, invoices: { "<cardId>|<YYYY-MM>": { paidAtISO, amount } } }
+ */
+class CardInvoiceService {
+  constructor(getUid) { this.getUid = getUid; }
+  _docRef() {
+    const uid = this.getUid();
+    if (!uid) throw new Error("Sem usuário logado.");
+    return f.doc(db, `users/${uid}/meta/cardInvoices`);
+  }
+
+  async load() {
+    const ref = this._docRef();
+    const snap = await f.getDoc(ref);
+    if (!snap.exists) return {};
+    const data = snap.data() || {};
+    return (data.invoices && typeof data.invoices === "object") ? data.invoices : {};
+  }
+
+  async setPaid(cardId, invoiceKey, amount) {
+    const ref = this._docRef();
+    const key = `${cardId}|${invoiceKey}`;
+    const payload = {};
+    payload[`invoices.${key}`] = { paidAtISO: Dates.todayISO(), amount: Number(amount || 0) };
+    await f.setDoc(ref, { version: 1, updatedAt: f.serverTimestamp(), ...payload }, { merge: true });
+  }
+
+  async clearPaid(cardId, invoiceKey) {
+    const ref = this._docRef();
+    const key = `${cardId}|${invoiceKey}`;
+    const payload = {};
+    payload[`invoices.${key}`] = firebase.firestore.FieldValue.delete();
+    await f.setDoc(ref, { version: 1, updatedAt: f.serverTimestamp(), ...payload }, { merge: true });
+  }
+}
+
+function fmtPayMethod(v) {
+  const map = { dinheiro: "Dinheiro", pix: "Pix", debito: "Débito", credito: "Cartão" };
+  return map[v] || "—";
+}
+
+function invoiceKeyFor(dateISO, closingDay) {
+  const d = new Date((dateISO || Dates.todayISO()) + "T00:00:00");
+  const day = d.getDate();
+  let y = d.getFullYear();
+  let m = d.getMonth();
+  if (day > Number(closingDay || 10)) {
+    m += 1;
+    if (m > 11) { m = 0; y += 1; }
+  }
+  const mm = String(m + 1).padStart(2, "0");
+  return `${y}-${mm}`;
+}
+
+function addMonthsToMonthKey(monthKey, delta) {
+  const parts = String(monthKey || Dates.currentMonthKey()).split("-");
+  let y = Number(parts[0] || 0);
+  let m = Number(parts[1] || 1) - 1;
+  m += Number(delta || 0);
+  while (m < 0) { m += 12; y -= 1; }
+  while (m > 11) { m -= 12; y += 1; }
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
 class RecurringService {
   constructor(getUid) { this.getUid = getUid; }
   _docRef() {
@@ -518,6 +633,8 @@ class UI {
     this.txSvc = txSvc;
     this.catSvc = new CategoryService(() => this.authSvc.user?.uid);
     this.recSvc = new RecurringService(() => this.authSvc.user?.uid);
+    this.cardSvc = new CardService(() => this.authSvc.user?.uid);
+    this.invSvc = new CardInvoiceService(() => this.authSvc.user?.uid);
 
     this.state = {
       route: "dashboard",
@@ -532,7 +649,10 @@ class UI {
       editTxId: null,
       editTxObj: null,
       recurring: [],
-      editRecId: null
+      editRecId: null,
+      cards: [],
+      cardInvoices: {},
+      editCardId: null
     };
 
     this.$ = (id) => document.getElementById(id);
@@ -579,6 +699,10 @@ class UI {
     this.qCategoria = this.$("qCategoria");
     this.qSubcategoria = this.$("qSubcategoria");
     this.qData = this.$("qData");
+    this.qPayMethod = this.$("qPayMethod");
+    this.qCardWrap = this.$("qCardWrap");
+    this.qCard = this.$("qCard");
+    this.qInvoiceHint = this.$("qInvoiceHint");
     this.qRecRow = this.$("qRecRow");
     this.qMakeRecurring = this.$("qMakeRecurring");
     this.qMakeRecurringNote = this.$("qMakeRecurringNote");
@@ -598,6 +722,7 @@ class UI {
     this.fTipo = this.$("fTipo");
     this.fFonte = this.$("fFonte");
     this.fBusca = this.$("fBusca");
+    this.fPay = this.$("fPay");
     this.btnLimparFiltro = this.$("btnLimparFiltro");
 
     // Recorrentes
@@ -638,6 +763,29 @@ class UI {
     this.btnGerarRel = this.$("btnGerarRel");
     this.btnCsv = this.$("btnCsv");
     this.btnPdf = this.$("btnPdf");
+    this.btnCartoes = this.$("btnCartoes");
+
+    // Cartões / faturas
+    this.dlgCartoes = this.$("dlgCartoes");
+    this.btnFecharCartoes = this.$("btnFecharCartoes");
+    this.cardFormTitle = this.$("cardFormTitle");
+    this.cardNome = this.$("cardNome");
+    this.cardLimite = this.$("cardLimite");
+    this.cardFechamento = this.$("cardFechamento");
+    this.cardVencimento = this.$("cardVencimento");
+    this.btnCardCancelar = this.$("btnCardCancelar");
+    this.btnCardSalvar = this.$("btnCardSalvar");
+    this.cardMsg = this.$("cardMsg");
+    this.cardsWrap = this.$("cardsWrap");
+    this.fatCard = this.$("fatCard");
+    this.fatMes = this.$("fatMes");
+    this.fatTotal = this.$("fatTotal");
+    this.fatStatus = this.$("fatStatus");
+    this.fatDatas = this.$("fatDatas");
+    this.btnFatMarcarPaga = this.$("btnFatMarcarPaga");
+    this.btnFatDesmarcar = this.$("btnFatDesmarcar");
+    this.fatLista = this.$("fatLista");
+    this.fatEmpty = this.$("fatEmpty");
 
     this.repEntradas = this.$("repEntradas");
     this.repSaidas = this.$("repSaidas");
@@ -659,6 +807,8 @@ class UI {
   init() {
     this.qData.value = Dates.todayISO();
     this.fMes.value = this.state.monthKey;
+
+    if (this.fatMes) this.fatMes.value = this.state.monthKey;
 
     if (this.versionInfo) {
       this.versionInfo.textContent = `${APP_VERSION} • Atualizado em ${BUILD_TIME}`;
@@ -754,7 +904,9 @@ class UI {
           source: this.qFonte.value,
           category: this.qCategoria.value,
           subcategory: (this.qSubcategoria?.value || "") || "",
-          date: this.qData.value || Dates.todayISO()
+          date: this.qData.value || Dates.todayISO(),
+          payMethod: (this.qPayMethod?.value || "dinheiro"),
+          cardId: (this.qPayMethod?.value === "credito") ? (this.qCard?.value || "") : ""
         };
 
         if (!tx.description) throw new Error("Descrição obrigatória.");
@@ -807,6 +959,10 @@ class UI {
           await this.txSvc.add(tx);
           this.qDesc.value = "";
           this.qValor.value = "";
+          if (this.qPayMethod) this.qPayMethod.value = "dinheiro";
+          if (this.qCard) this.qCard.value = "";
+          if (this.qCardWrap) this.qCardWrap.style.display = "none";
+          this._updateInvoiceHint();
           this.quickMsg.textContent = "Salvo com sucesso ✅";
         }
 
@@ -821,8 +977,27 @@ class UI {
     // Update recurring note (only when editing)
     if (this.qData) {
       this.qData.addEventListener("change", () => {
-        if (!this.state.editTxId) return;
-        this._updateMakeRecurringNote();
+        if (this.state.editTxId) this._updateMakeRecurringNote();
+        this._updateInvoiceHint();
+      });
+    }
+
+    if (this.qPayMethod) {
+      this.qPayMethod.addEventListener("change", () => {
+        const isCredit = this.qPayMethod.value === "credito";
+        if (this.qCardWrap) this.qCardWrap.style.display = isCredit ? "block" : "none";
+        if (!isCredit && this.qCard) this.qCard.value = "";
+        this._updateInvoiceHint();
+      });
+    }
+    if (this.qCard) {
+      this.qCard.addEventListener("change", () => {
+        if (this.qCard.value === "__add__") {
+          this.qCard.value = "";
+          this._openCartoesDialog();
+          return;
+        }
+        this._updateInvoiceHint();
       });
     }
 
@@ -875,12 +1050,13 @@ class UI {
       await this.refreshMonth();
       this.renderLancamentos();
     });
-    [this.fTipo, this.fFonte, this.fBusca].forEach(el => {
+    [this.fTipo, this.fFonte, this.fPay, this.fBusca].filter(Boolean).forEach(el => {
       el.addEventListener("input", () => this.renderLancamentos());
     });
     this.btnLimparFiltro.addEventListener("click", () => {
       this.fTipo.value = "todos";
       this.fFonte.value = "todas";
+      if (this.fPay) this.fPay.value = "todas";
       this.fBusca.value = "";
       this.state.quickFilter = null;
       this.renderLancamentos();
@@ -954,6 +1130,86 @@ class UI {
         this.bkMsg.textContent = "Backup gerado ✅";
       } catch (e) {
         this.bkMsg.textContent = e.message || "Erro ao exportar.";
+      }
+    });
+
+    if (this.btnCartoes) {
+      this.btnCartoes.addEventListener("click", async () => {
+        try {
+          await this._requireLogin();
+          this.state.cards = await this.cardSvc.loadOrSeed();
+          this.state.cardInvoices = await this.invSvc.load();
+          this._syncCardSelects();
+          this._openCartoesDialog();
+        } catch (e) {
+          alert(e.message || "Erro ao abrir cartões.");
+        }
+      });
+    }
+    this.btnFecharCartoes?.addEventListener("click", () => this._closeCartoesDialog());
+    this.fatCard?.addEventListener("change", () => this._renderFatura());
+    this.fatMes?.addEventListener("change", () => this._renderFatura());
+
+    this.btnCardCancelar?.addEventListener("click", () => this._clearCardForm());
+    this.btnCardSalvar?.addEventListener("click", async () => {
+      try {
+        await this._requireLogin();
+        if (this.cardMsg) this.cardMsg.textContent = "";
+        const name = (this.cardNome?.value || "").trim();
+        if (!name) throw new Error("Digite o nome do cartão.");
+        const limit = Money.parseAmount(this.cardLimite?.value || "0");
+        const closingDay = Math.min(28, Math.max(1, Number(this.cardFechamento?.value || 10)));
+        const dueDay = Math.min(28, Math.max(1, Number(this.cardVencimento?.value || 5)));
+
+        const list = (this.state.cards || []).slice();
+        if (this.state.editCardId) {
+          const idx = list.findIndex(c => c.id === this.state.editCardId);
+          if (idx >= 0) list[idx] = { ...list[idx], name, limit, closingDay, dueDay };
+        } else {
+          list.push({ id: cryptoRandomId(), name, limit, closingDay, dueDay });
+        }
+
+        this.state.cards = await this.cardSvc.save(list);
+        this._syncCardSelects();
+        this._renderCardsAdmin();
+        this._renderFatura();
+        this._clearCardForm();
+        if (this.cardMsg) this.cardMsg.textContent = "Salvo ✅";
+      } catch (e) {
+        if (this.cardMsg) this.cardMsg.textContent = e.message || "Erro ao salvar cartão.";
+      }
+    });
+
+    this.btnFatMarcarPaga?.addEventListener("click", async () => {
+      try {
+        await this._requireLogin();
+        const cardId = this.fatCard?.value || "";
+        const invKey = this.fatMes?.value || "";
+        if (!cardId || !invKey) throw new Error("Selecione cartão e mês.");
+        const card = (this.state.cards || []).find(c => c.id === cardId);
+        const txs = (this.state.txMonthAll || []).length ? this.state.txMonthAll : (this.state.txMonth || []);
+        const items = txs.filter(t => (t.payMethod === "credito") && (t.cardId === cardId))
+          .filter(t => invoiceKeyFor(t.date, card?.closingDay || 10) === invKey);
+        const total = items.reduce((s,t)=>s + Number(t.amount||0), 0);
+        await this.invSvc.setPaid(cardId, invKey, total);
+        this.state.cardInvoices = await this.invSvc.load();
+        this._renderFatura();
+      } catch (e) {
+        alert(e.message || "Erro ao marcar como paga.");
+      }
+    });
+
+    this.btnFatDesmarcar?.addEventListener("click", async () => {
+      try {
+        await this._requireLogin();
+        const cardId = this.fatCard?.value || "";
+        const invKey = this.fatMes?.value || "";
+        if (!cardId || !invKey) throw new Error("Selecione cartão e mês.");
+        await this.invSvc.clearPaid(cardId, invKey);
+        this.state.cardInvoices = await this.invSvc.load();
+        this._renderFatura();
+      } catch (e) {
+        alert(e.message || "Erro ao desmarcar.");
       }
     });
 
@@ -1577,6 +1833,7 @@ class UI {
     const txs = (this.state.txMonth || []).slice();
     const tipo = this.fTipo.value;
     const fonte = this.fFonte.value;
+    const pay = this.fPay ? this.fPay.value : "todas";
     const busca = (this.fBusca.value || "").trim().toLowerCase();
 
     let filtered = txs;
@@ -1588,6 +1845,11 @@ class UI {
     if (tipo !== "todos") filtered = filtered.filter(t => t.type === tipo);
     if (fonte !== "todas") filtered = filtered.filter(t => t.source === fonte);
 
+    if (pay !== "todas") {
+      if (pay === "credito") filtered = filtered.filter(t => t.payMethod === "credito");
+      else filtered = filtered.filter(t => (t.payMethod || "dinheiro") === pay);
+    }
+
     if (busca) {
       filtered = filtered.filter(t => {
         const d = (t.description || "").toLowerCase();
@@ -1597,6 +1859,192 @@ class UI {
     }
 
     return filtered;
+  }
+
+  _updateInvoiceHint() {
+    if (!this.qInvoiceHint) return;
+    const pm = this.qPayMethod?.value || "dinheiro";
+    if (pm !== "credito") { this.qInvoiceHint.textContent = ""; return; }
+    const cardId = this.qCard?.value || "";
+    const card = (this.state.cards || []).find(c => c.id === cardId);
+    if (!card) { this.qInvoiceHint.textContent = "Selecione um cartão."; return; }
+    const dateISO = this.qData?.value || Dates.todayISO();
+    const invKey = invoiceKeyFor(dateISO, card.closingDay);
+    const closingDate = `${invKey}-${String(card.closingDay).padStart(2,'0')}`;
+    const dueKey = addMonthsToMonthKey(invKey, 1);
+    const dueDate = `${dueKey}-${String(card.dueDay).padStart(2,'0')}`;
+    this.qInvoiceHint.textContent = `Vai para fatura ${invKey} • Fecha ${closingDate} • Vence ${dueDate}`;
+  }
+
+  _syncCardSelects() {
+    const cards = this.state.cards || [];
+    const fill = (sel, includeAdd = false) => {
+      if (!sel) return;
+      sel.innerHTML = "";
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = cards.length ? "Selecione..." : "Nenhum cartão (adicione)";
+      sel.appendChild(opt0);
+      for (const c of cards) {
+        const o = document.createElement("option");
+        o.value = c.id;
+        o.textContent = c.name;
+        sel.appendChild(o);
+      }
+      if (includeAdd) {
+        const oa = document.createElement("option");
+        oa.value = "__add__";
+        oa.textContent = "＋ Adicionar cartão…";
+        sel.appendChild(oa);
+      }
+    };
+    fill(this.qCard, true);
+    fill(this.fatCard, false);
+  }
+
+  _fmtPayPill(tx) {
+    const pm = tx?.payMethod || "dinheiro";
+    if (pm === "credito") {
+      const card = (this.state.cards || []).find(c => c.id === tx.cardId);
+      const name = card ? card.name : "Cartão";
+      return `<span class="txPayPill">💳 ${escapeHtml(name)}</span>`;
+    }
+    return `<span class="txPayPill">${escapeHtml(fmtPayMethod(pm))}</span>`;
+  }
+
+  _openCartoesDialog() {
+    if (!this.dlgCartoes) return;
+    try { this.dlgCartoes.showModal(); } catch (_) { this.dlgCartoes.setAttribute("open",""); }
+    this._renderCardsAdmin();
+    this._renderFatura();
+  }
+
+  _closeCartoesDialog() {
+    if (!this.dlgCartoes) return;
+    try { this.dlgCartoes.close(); } catch (_) { this.dlgCartoes.removeAttribute("open"); }
+  }
+
+  _renderCardsAdmin() {
+    if (!this.cardsWrap) return;
+    const cards = (this.state.cards || []).slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+    if (!cards.length) {
+      this.cardsWrap.innerHTML = `<div class="empty">Nenhum cartão cadastrado.</div>`;
+      return;
+    }
+    this.cardsWrap.innerHTML = "";
+    for (const c of cards) {
+      const row = document.createElement("div");
+      row.className = "cardItemRow";
+      const limitTxt = c.limit ? ` • Limite: ${Money.toBRL(c.limit)}` : "";
+      row.innerHTML = `
+        <div class="left">
+          <div class="title">${escapeHtml(c.name)}</div>
+          <div class="meta">Fechamento dia ${c.closingDay} • Vencimento dia ${c.dueDay}${limitTxt}</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn--ghost miniBtn" data-edit="${c.id}">Editar</button>
+          <button class="btn btn--danger miniBtn" data-del="${c.id}">Excluir</button>
+        </div>
+      `;
+      row.querySelector("[data-edit]").addEventListener("click", () => this._editCard(c));
+      row.querySelector("[data-del]").addEventListener("click", () => this._deleteCard(c));
+      this.cardsWrap.appendChild(row);
+    }
+  }
+
+  _editCard(card) {
+    this.state.editCardId = card.id;
+    if (this.cardFormTitle) this.cardFormTitle.textContent = "Editar cartão";
+    if (this.cardNome) this.cardNome.value = card.name || "";
+    if (this.cardLimite) this.cardLimite.value = card.limit ? String(card.limit) : "";
+    if (this.cardFechamento) this.cardFechamento.value = String(card.closingDay || 10);
+    if (this.cardVencimento) this.cardVencimento.value = String(card.dueDay || 5);
+    if (this.cardMsg) this.cardMsg.textContent = "";
+  }
+
+  _clearCardForm() {
+    this.state.editCardId = null;
+    if (this.cardFormTitle) this.cardFormTitle.textContent = "Adicionar cartão";
+    if (this.cardNome) this.cardNome.value = "";
+    if (this.cardLimite) this.cardLimite.value = "";
+    if (this.cardFechamento) this.cardFechamento.value = "10";
+    if (this.cardVencimento) this.cardVencimento.value = "5";
+  }
+
+  async _deleteCard(card) {
+    const ok = confirm(`Excluir o cartão "${card.name}"? (Compras antigas continuam, mas sem referência do cartão.)`);
+    if (!ok) return;
+    const next = (this.state.cards || []).filter(c => c.id !== card.id);
+    this.state.cards = await this.cardSvc.save(next);
+    this._syncCardSelects();
+    this._renderCardsAdmin();
+    this._renderFatura();
+    this._updateInvoiceHint();
+  }
+
+  _renderFatura() {
+    if (!this.fatCard || !this.fatMes) return;
+    const fallback = (this.state.cards?.[0]?.id || "");
+    if (!this.fatCard.value && fallback) this.fatCard.value = fallback;
+
+    const card = (this.state.cards || []).find(c => c.id === (this.fatCard.value || ""));
+    const invKey = this.fatMes.value || this.state.monthKey;
+
+    if (!card) {
+      if (this.fatTotal) this.fatTotal.textContent = Money.toBRL(0);
+      if (this.fatStatus) this.fatStatus.textContent = "—";
+      if (this.fatDatas) this.fatDatas.textContent = "Fechamento: — • Vencimento: —";
+      if (this.fatLista) this.fatLista.innerHTML = "";
+      if (this.fatEmpty) this.fatEmpty.style.display = "block";
+      return;
+    }
+
+    const closingDate = `${invKey}-${String(card.closingDay).padStart(2,'0')}`;
+    const dueKey = addMonthsToMonthKey(invKey, 1);
+    const dueDate = `${dueKey}-${String(card.dueDay).padStart(2,'0')}`;
+    if (this.fatDatas) this.fatDatas.textContent = `Fechamento: ${closingDate} • Vencimento: ${dueDate}`;
+
+    const txs = (this.state.txMonthAll || []).length ? this.state.txMonthAll : (this.state.txMonth || []);
+    const items = txs
+      .filter(t => (t.payMethod === "credito") && (t.cardId === card.id))
+      .filter(t => invoiceKeyFor(t.date, card.closingDay) === invKey)
+      .sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+
+    const total = items.reduce((s,t)=>s + Number(t.amount||0), 0);
+    if (this.fatTotal) this.fatTotal.textContent = Money.toBRL(total);
+
+    const paidMap = this.state.cardInvoices || {};
+    const paid = paidMap[`${card.id}|${invKey}`];
+    if (paid && paid.paidAtISO) {
+      if (this.fatStatus) this.fatStatus.textContent = `Paga em ${paid.paidAtISO}`;
+    } else {
+      if (this.fatStatus) this.fatStatus.textContent = "Em aberto";
+    }
+
+    if (this.fatLista) this.fatLista.innerHTML = "";
+    if (!items.length) {
+      if (this.fatEmpty) this.fatEmpty.style.display = "block";
+      return;
+    }
+    if (this.fatEmpty) this.fatEmpty.style.display = "none";
+
+    for (const tx of items) {
+      const row = document.createElement("div");
+      row.className = "txCard";
+      row.innerHTML = `
+        <div class="txTop">
+          <div class="txDesc">
+            <span class="txDescText">${escapeHtml(tx.description || "")}</span>
+          </div>
+          <div class="txVal">${Money.toBRL(tx.amount)}</div>
+        </div>
+        <div class="txMeta">
+          <div><span class="muted">Data:</span> ${tx.date || ""}</div>
+          <div><span class="muted">Categoria:</span> ${this._fmtCatPill(tx) || "—"}</div>
+        </div>
+      `;
+      this.fatLista.appendChild(row);
+    }
   }
 
   _fmtCat(tx) {
@@ -1634,6 +2082,7 @@ class UI {
           <div><span class="muted">Tipo:</span> ${tx.type === "entrada" ? "Entrada" : "Saída"}</div>
           <div><span class="muted">Categoria:</span> ${this._fmtCatPill(tx) || "—"}</div>
           <div><span class="muted">Fonte:</span> ${fmtSource(tx.source)}</div>
+          <div><span class="muted">Pagamento:</span> ${this._fmtPayPill(tx)}</div>
         </div>
         <div class="txActions">
           <button class="btn btn--ghost miniBtn" data-edit="${tx.id}">Editar</button>
@@ -1654,6 +2103,7 @@ class UI {
         <td>${this._fmtCatPill(tx) || ""}</td>
         <td>${tx.type === "entrada" ? "Entrada" : "Saída"}</td>
         <td>${fmtSource(tx.source)}</td>
+        <td>${this._fmtPayPill(tx)}</td>
         <td class="right">${Money.toBRL(tx.amount)}</td>
         <td class="right">
           <button class="btn btn--ghost miniBtn" data-edit="${tx.id}">Editar</button>
@@ -1686,6 +2136,14 @@ class UI {
       this.qSubcategoria.value = (tx.subcategory || "");
     }
     this.qData.value = tx.date || Dates.todayISO();
+
+    if (this.qPayMethod) {
+      this.qPayMethod.value = tx.payMethod || "dinheiro";
+      const isCredit = this.qPayMethod.value === "credito";
+      if (this.qCardWrap) this.qCardWrap.style.display = isCredit ? "block" : "none";
+      if (this.qCard) this.qCard.value = (isCredit ? (tx.cardId || "") : "");
+      this._updateInvoiceHint();
+    }
 
     // Recorrência: só aparece no modo edição
     if (this.qRecRow) this.qRecRow.style.display = "flex";
