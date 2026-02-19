@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.6.0";
+const APP_VERSION = "v0.6.1";
 const BUILD_TIME = "19/02/2026 08:00";
 const BUILD_TIME_ISO = "2026-02-19T08:00:00";
 
@@ -696,9 +696,11 @@ class UI {
     this.qValor = this.$("qValor");
     this.qTipo = this.$("qTipo");
     this.qFonte = this.$("qFonte");
+    this.qFonteWrap = this.$("qFonteWrap");
     this.qCategoria = this.$("qCategoria");
     this.qSubcategoria = this.$("qSubcategoria");
     this.qData = this.$("qData");
+    this.qPayRow = this.$("qPayRow");
     this.qPayMethod = this.$("qPayMethod");
     this.qCardWrap = this.$("qCardWrap");
     this.qCard = this.$("qCard");
@@ -868,6 +870,7 @@ class UI {
 
     this._applyRelModeUI();
     this._bind();
+    this._applyTypeUI();
     this.go("dashboard");
     this._applyLancView();
   }
@@ -897,16 +900,24 @@ class UI {
       try {
         await this._requireLogin();
 
+        // Fonte faz sentido somente para ENTRADA; Pagamento somente para SAÍDA.
+        const type = this.qTipo.value;
+        const isEntrada = type === "entrada";
+        const isSaida = type === "saida";
+
+        const payMethod = isSaida ? (this.qPayMethod?.value || "dinheiro") : "";
+        const cardId = (isSaida && payMethod === "credito") ? (this.qCard?.value || "") : "";
+
         const tx = {
           description: this.qDesc.value.trim(),
           amount: Money.parseAmount(this.qValor.value),
-          type: this.qTipo.value,
-          source: this.qFonte.value,
+          type,
+          source: isEntrada ? (this.qFonte.value || "outros") : "",
           category: this.qCategoria.value,
           subcategory: (this.qSubcategoria?.value || "") || "",
           date: this.qData.value || Dates.todayISO(),
-          payMethod: (this.qPayMethod?.value || "dinheiro"),
-          cardId: (this.qPayMethod?.value === "credito") ? (this.qCard?.value || "") : ""
+          payMethod,
+          cardId
         };
 
         if (!tx.description) throw new Error("Descrição obrigatória.");
@@ -959,9 +970,9 @@ class UI {
           await this.txSvc.add(tx);
           this.qDesc.value = "";
           this.qValor.value = "";
-          if (this.qPayMethod) this.qPayMethod.value = "dinheiro";
-          if (this.qCard) this.qCard.value = "";
-          if (this.qCardWrap) this.qCardWrap.style.display = "none";
+          this._resetPayFields();
+          // Mantém a UI coerente com o tipo padrão
+          this._applyTypeUI();
           this._updateInvoiceHint();
           this.quickMsg.textContent = "Salvo com sucesso ✅";
         }
@@ -988,6 +999,12 @@ class UI {
         if (this.qCardWrap) this.qCardWrap.style.display = isCredit ? "block" : "none";
         if (!isCredit && this.qCard) this.qCard.value = "";
         this._updateInvoiceHint();
+      });
+    }
+
+    if (this.qTipo) {
+      this.qTipo.addEventListener("change", () => {
+        this._applyTypeUI();
       });
     }
     if (this.qCard) {
@@ -1215,6 +1232,32 @@ class UI {
 
     this.btnImportMesclar.addEventListener("click", async () => this._handleImport("merge"));
     this.btnImportSubst.addEventListener("click", async () => this._handleImport("replace"));
+  }
+
+  _resetPayFields() {
+    if (this.qPayMethod) this.qPayMethod.value = "dinheiro";
+    if (this.qCard) this.qCard.value = "";
+    if (this.qCardWrap) this.qCardWrap.style.display = "none";
+    if (this.qInvoiceHint) this.qInvoiceHint.textContent = "";
+  }
+
+  _applyTypeUI() {
+    const type = this.qTipo?.value || "saida";
+    const isEntrada = type === "entrada";
+
+    // Fonte só para ENTRADA
+    if (this.qFonteWrap) this.qFonteWrap.style.display = isEntrada ? "flex" : "none";
+
+    // Pagamento só para SAÍDA
+    if (this.qPayRow) this.qPayRow.style.display = isEntrada ? "none" : "grid";
+
+    if (isEntrada) {
+      // Limpa pagamento para não confundir
+      this._resetPayFields();
+    }
+
+    // Ajusta hint
+    this._updateInvoiceHint();
   }
 
   _applyLancView() {
@@ -1903,6 +1946,7 @@ class UI {
   }
 
   _fmtPayPill(tx) {
+    if ((tx?.type || "") === "entrada") return `<span class="txPayPill">—</span>`;
     const pm = tx?.payMethod || "dinheiro";
     if (pm === "credito") {
       const card = (this.state.cards || []).find(c => c.id === tx.cardId);
@@ -2081,7 +2125,7 @@ class UI {
           <div><span class="muted">Data:</span> ${tx.date || ""}</div>
           <div><span class="muted">Tipo:</span> ${tx.type === "entrada" ? "Entrada" : "Saída"}</div>
           <div><span class="muted">Categoria:</span> ${this._fmtCatPill(tx) || "—"}</div>
-          <div><span class="muted">Fonte:</span> ${fmtSource(tx.source)}</div>
+          <div><span class="muted">Fonte:</span> ${tx.type === "entrada" ? fmtSource(tx.source) : "—"}</div>
           <div><span class="muted">Pagamento:</span> ${this._fmtPayPill(tx)}</div>
         </div>
         <div class="txActions">
@@ -2102,7 +2146,7 @@ class UI {
         <td>${escapeHtml(tx.description || "")} ${this._isRecurringTx(tx) ? '<span class="txBadgeRec" style="margin-left:6px;">Recorrente</span>' : ''}</td>
         <td>${this._fmtCatPill(tx) || ""}</td>
         <td>${tx.type === "entrada" ? "Entrada" : "Saída"}</td>
-        <td>${fmtSource(tx.source)}</td>
+        <td>${tx.type === "entrada" ? fmtSource(tx.source) : "—"}</td>
         <td>${this._fmtPayPill(tx)}</td>
         <td class="right">${Money.toBRL(tx.amount)}</td>
         <td class="right">
@@ -2127,6 +2171,8 @@ class UI {
     this.qTipo.value = tx.type || "saida";
     this.qFonte.value = tx.source || "salario_fixo";
 
+    this._applyTypeUI();
+
     const cat = (tx.category || "Outros");
     if (this.qCategoria) {
       this.qCategoria.value = cat;
@@ -2138,10 +2184,14 @@ class UI {
     this.qData.value = tx.date || Dates.todayISO();
 
     if (this.qPayMethod) {
-      this.qPayMethod.value = tx.payMethod || "dinheiro";
-      const isCredit = this.qPayMethod.value === "credito";
-      if (this.qCardWrap) this.qCardWrap.style.display = isCredit ? "block" : "none";
-      if (this.qCard) this.qCard.value = (isCredit ? (tx.cardId || "") : "");
+      if ((tx.type || "") === "saida") {
+        this.qPayMethod.value = tx.payMethod || "dinheiro";
+        const isCredit = this.qPayMethod.value === "credito";
+        if (this.qCardWrap) this.qCardWrap.style.display = isCredit ? "block" : "none";
+        if (this.qCard) this.qCard.value = (isCredit ? (tx.cardId || "") : "");
+      } else {
+        this._resetPayFields();
+      }
       this._updateInvoiceHint();
     }
 
@@ -2193,6 +2243,8 @@ class UI {
       if (this.qSubcategoria) this.qSubcategoria.value = "";
       if (this.qData) this.qData.value = Dates.todayISO();
     }
+
+    this._applyTypeUI();
   }
 
 
@@ -2353,6 +2405,7 @@ function cryptoRandomId() {
 }
 
 function fmtSource(src) {
+  if (!src) return "—";
   if (src === "salario_fixo") return "Salário fixo";
   if (src === "renda_extra") return "Renda extra";
   return "Outros";

@@ -379,6 +379,15 @@ body{
   gap:10px;
   margin-bottom: 10px;
 }
+
+/* Linha com 2 campos + hint (Pagamento / Cartão / Hint) */
+.row3{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  margin-bottom: 10px;
+}
+#qInvoiceHint{grid-column: 1 / -1;}
 .field{display:flex; flex-direction:column; gap:6px}
 .field span{font-size:12px; color: var(--muted); font-weight:600}
 input, select{
@@ -389,6 +398,12 @@ input, select{
   background: rgba(0,0,0,.22);
   color: var(--text);
   outline:none;
+}
+
+/* Melhora legibilidade do dropdown em alguns Android/Chrome (evita lista "invisível") */
+select option{
+  background: var(--bg0);
+  color: var(--text);
 }
 input::placeholder{color: rgba(233,242,255,.35)}
 .actionsRow{margin-top: 6px}
