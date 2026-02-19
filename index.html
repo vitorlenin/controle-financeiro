@@ -22,14 +22,15 @@
           ←
           <span class="btnBack__text">Voltar</span>
 </button>
-</div><div aria-label="Identificação do app" class="brand"><div class="brand__title">Controle Financeiro <span class="muted" id="versionBadge">(v0.6.3)</span></div></div><div class="actions">
+</div><div aria-label="Identificação do app" class="brand"><div class="brand__title">Controle Financeiro <span class="muted" id="versionBadge">(v0.6.4)</span></div></div><div class="actions">
 <button class="btn btn--ghost" id="btnLogout" style="display:none;" title="Sair">Sair</button>
 <button class="btn btn--primary" id="btnLogin">G Entrar com Google</button>
-</div><div aria-label="Status e versão" class="topmeta"><div class="muted small" id="versionInfo">v0.6.3 • Atualizado em 19/02/2026 08:40</div><div class="pill" id="authStatus">Deslogado</div></div><nav class="tabs">
+</div><div aria-label="Status e versão" class="topmeta"><div class="muted small" id="versionInfo">v0.6.4 • Atualizado em 19/02/2026 15:25</div><div class="pill" id="authStatus">Deslogado</div></div><nav class="tabs">
 <button class="tab is-active" data-route="dashboard">Dashboard</button>
 <button class="tab" data-route="lancamentos">Lançamentos</button>
 <button class="tab" data-route="relatorios">Relatórios</button>
 <button class="tab" data-route="categorias">Configurações</button>
+<button class="tab" data-route="backup">Backup / Import</button>
 </nav></header>
 <aside aria-hidden="true" class="drawer" id="drawer">
 <div class="drawer__backdrop" id="drawerBackdrop"></div>
@@ -39,6 +40,7 @@
 <button class="drawer__item" data-route="lancamentos" type="button">Lançamentos</button>
 <button class="drawer__item" data-route="relatorios" type="button">Relatórios</button>
 <button class="drawer__item" data-route="categorias" type="button">Configurações</button>
+<button class="drawer__item" data-route="backup" type="button">Backup / Import</button>
 </div>
 </aside>
 <main class="panel">
@@ -366,7 +368,7 @@
       <div class="formMsg" id="recMsg"></div>
     </div>
 
-    <div class="boxInner">
+    <div class="boxInner" id="boxCardForm">
       <h3 class="h3">Lista</h3>
       <div id="recWrap"></div>
       <div class="muted small" style="margin-top:10px;">Dica: os lançamentos gerados ficam no mês correspondente e podem ser editados normalmente.</div>
@@ -411,7 +413,7 @@
 <div class="reportActions">
 <button class="btn btn--ghost" id="btnCsv" type="button">Exportar CSV</button>
 <button class="btn btn--ghost" id="btnPdf" type="button">Exportar PDF</button>
-<button class="btn btn--ghost" id="btnCartoes" type="button">Cartões / Faturas</button>
+<button class="btn btn--ghost" id="btnCartoes" type="button">Faturas</button>
 </div>
 <div class="reportGrid">
 <div class="reportCard">
@@ -447,8 +449,16 @@
 <div class="sectionTitle">
 <div>
 <h2>Configurações</h2>
-<p class="hint">Gerencie categorias, subcategorias, cartões e backup do sistema.</p>
+<p class="hint">Gerencie <b>categorias</b>, <b>subcategorias</b> e <b>cartões</b>.</p>
 </div>
+</div>
+
+<div class="box">
+<div class="box__title">
+<h3>Cartões de crédito</h3>
+<p class="muted small">Cadastre e edite seus cartões (fechamento, vencimento e limite opcional).</p>
+</div>
+<button class="btn btn--primary" id="btnGerenciarCartoes" type="button">Gerenciar cartões</button>
 </div>
 
 <div class="box">
@@ -477,22 +487,16 @@
 </div>
 <div id="catsWrap"></div>
 </div>
+</section>
 
-
-<div class="box">
-  <div class="box__title">
-    <h3>Cartões de crédito</h3>
-    <p class="muted small">Cadastre cartões (fechamento/vencimento) e acompanhe faturas.</p>
-  </div>
-  <div class="row2" style="align-items:center;">
-    <div class="muted small">Gerencie seus cartões e veja as faturas mensais.</div>
-    <button class="btn btn--primary" id="btnGerenciarCartoes" type="button">Gerenciar cartões</button>
-  </div>
+<section class="view" id="view-backup">
+<div class="sectionTitle">
+<div>
+<h2>Backup / Import</h2>
+<p class="hint">Exporta e importa seus lançamentos (JSON). Útil para manter versões estáveis.</p>
 </div>
-
-<div class="divider" style="margin:18px 0;"></div>
-
-<div class="box"><div class="box__title"><h3>Backup e Restauração</h3><p class="muted small">Exporta e importa seus lançamentos (JSON). Útil para manter versões estáveis.</p></div>
+</div>
+<div class="box">
 <div class="backupGrid">
 <div class="boxInner">
 <h3 class="h3">Exportar</h3>
@@ -515,9 +519,7 @@
 </div>
 </div>
 </div>
-
 </section>
-
 <footer class="footer">
 <span class="muted small">Dados por usuário • Firestore • HTML/JS puro • Vitor Lenin</span>
 </footer>
@@ -527,7 +529,7 @@
 <dialog class="dlg" id="dlgCartoes">
   <div class="dlg__head">
     <div>
-      <div class="dlg__title">Cartões e Faturas</div>
+      <div class="dlg__title" id="dlgCartoesTitle">Cartões e Faturas</div>
       <div class="muted small">Marque compras no cartão e veja a fatura por mês (com fechamento/vencimento).</div>
     </div>
     <button class="btn btn--ghost" id="btnFecharCartoes" type="button">Fechar</button>
@@ -597,7 +599,7 @@
       </div>
     </div>
 
-    <div class="boxInner" style="margin-top:12px;">
+    <div class="boxInner" id="boxCardsList" style="margin-top:12px;">
       <h3 class="h3">Meus cartões</h3>
       <div id="cardsWrap"></div>
     </div>

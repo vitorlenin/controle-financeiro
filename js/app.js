@@ -1022,7 +1022,7 @@ class UI {
       this.qCard.addEventListener("change", () => {
         if (this.qCard.value === "__add__") {
           this.qCard.value = "";
-          this._openCartoesDialog();
+          this._openCartoesDialog("faturas");
           return;
         }
         this._updateInvoiceHint();
@@ -1177,17 +1177,25 @@ class UI {
           this.state.cards = await this.cardSvc.loadOrSeed();
           this.state.cardInvoices = await this.invSvc.load();
           this._syncCardSelects();
-          this._openCartoesDialog();
+          this._openCartoesDialog("faturas");
         } catch (e) {
           alert(e.message || "Erro ao abrir cartões.");
         }
       });
+    }
 
-      // Atalho em Configurações
-      if (this.btnGerenciarCartoes) {
-        this.btnGerenciarCartoes.addEventListener("click", () => this.btnCartoes && this.btnCartoes.click());
-      }
-
+    if (this.btnGerenciarCartoes) {
+      this.btnGerenciarCartoes.addEventListener("click", async () => {
+        try {
+          await this._requireLogin();
+          this.state.cards = await this.cardSvc.loadOrSeed();
+          this.state.cardInvoices = await this.invSvc.load();
+          this._syncCardSelects();
+          this._openCartoesDialog("gerenciar");
+        } catch (e) {
+          alert(e.message || "Erro ao abrir cartões.");
+        }
+      });
     }
     this.btnFecharCartoes?.addEventListener("click", () => this._closeCartoesDialog());
     this.fatCard?.addEventListener("change", () => this._renderFatura());
@@ -2056,10 +2064,18 @@ class UI {
     return `<span class="txPayPill">${escapeHtml(fmtPayMethod(pm))}</span>`;
   }
 
-  _openCartoesDialog() {
+  _openCartoesDialog(mode = "gerenciar") {
     if (!this.dlgCartoes) return;
+    // mode: "gerenciar" (cadastro + fatura) | "faturas" (somente fatura)
+    const isFaturasOnly = mode === "faturas";
+    this.dlgCartoes.classList.toggle("faturasOnly", isFaturasOnly);
+
+    const titleEl = document.getElementById("dlgCartoesTitle");
+    if (titleEl) titleEl.textContent = isFaturasOnly ? "Faturas do cartão" : "Cartões e Faturas";
+
     try { this.dlgCartoes.showModal(); } catch (_) { this.dlgCartoes.setAttribute("open",""); }
-    this._renderCardsAdmin();
+
+    if (!isFaturasOnly) this._renderCardsAdmin();
     this._renderFatura();
   }
 
