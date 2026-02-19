@@ -22,15 +22,14 @@
           ←
           <span class="btnBack__text">Voltar</span>
 </button>
-</div><div aria-label="Identificação do app" class="brand"><div class="brand__title">Controle Financeiro <span class="muted" id="versionBadge">(v0.6.2)</span></div></div><div class="actions">
+</div><div aria-label="Identificação do app" class="brand"><div class="brand__title">Controle Financeiro <span class="muted" id="versionBadge">(v0.6.3)</span></div></div><div class="actions">
 <button class="btn btn--ghost" id="btnLogout" style="display:none;" title="Sair">Sair</button>
 <button class="btn btn--primary" id="btnLogin">G Entrar com Google</button>
-</div><div aria-label="Status e versão" class="topmeta"><div class="muted small" id="versionInfo">v0.6.2 • Atualizado em 19/02/2026 08:10</div><div class="pill" id="authStatus">Deslogado</div></div><nav class="tabs">
+</div><div aria-label="Status e versão" class="topmeta"><div class="muted small" id="versionInfo">v0.6.3 • Atualizado em 19/02/2026 08:40</div><div class="pill" id="authStatus">Deslogado</div></div><nav class="tabs">
 <button class="tab is-active" data-route="dashboard">Dashboard</button>
 <button class="tab" data-route="lancamentos">Lançamentos</button>
 <button class="tab" data-route="relatorios">Relatórios</button>
-<button class="tab" data-route="categorias">Categorias</button>
-<button class="tab" data-route="backup">Backup / Import</button>
+<button class="tab" data-route="categorias">Configurações</button>
 </nav></header>
 <aside aria-hidden="true" class="drawer" id="drawer">
 <div class="drawer__backdrop" id="drawerBackdrop"></div>
@@ -39,8 +38,7 @@
 <button class="drawer__item" data-route="dashboard" type="button">Dashboard</button>
 <button class="drawer__item" data-route="lancamentos" type="button">Lançamentos</button>
 <button class="drawer__item" data-route="relatorios" type="button">Relatórios</button>
-<button class="drawer__item" data-route="categorias" type="button">Categorias</button>
-<button class="drawer__item" data-route="backup" type="button">Backup / Import</button>
+<button class="drawer__item" data-route="categorias" type="button">Configurações</button>
 </div>
 </aside>
 <main class="panel">
@@ -448,8 +446,8 @@
 <section class="view" id="view-categorias">
 <div class="sectionTitle">
 <div>
-<h2>Categorias</h2>
-<p class="hint">Gerenciar / editar / excluir <b>categorias</b> e <b>subcategorias</b>.</p>
+<h2>Configurações</h2>
+<p class="hint">Gerencie categorias, subcategorias, cartões e backup do sistema.</p>
 </div>
 </div>
 
@@ -479,16 +477,22 @@
 </div>
 <div id="catsWrap"></div>
 </div>
-</section>
 
-<section class="view" id="view-backup">
-<div class="sectionTitle">
-<div>
-<h2>Backup / Import</h2>
-<p class="hint">Exporta e importa seus lançamentos (JSON). Útil para manter versões estáveis.</p>
-</div>
-</div>
+
 <div class="box">
+  <div class="box__title">
+    <h3>Cartões de crédito</h3>
+    <p class="muted small">Cadastre cartões (fechamento/vencimento) e acompanhe faturas.</p>
+  </div>
+  <div class="row2" style="align-items:center;">
+    <div class="muted small">Gerencie seus cartões e veja as faturas mensais.</div>
+    <button class="btn btn--primary" id="btnGerenciarCartoes" type="button">Gerenciar cartões</button>
+  </div>
+</div>
+
+<div class="divider" style="margin:18px 0;"></div>
+
+<div class="box"><div class="box__title"><h3>Backup e Restauração</h3><p class="muted small">Exporta e importa seus lançamentos (JSON). Útil para manter versões estáveis.</p></div>
 <div class="backupGrid">
 <div class="boxInner">
 <h3 class="h3">Exportar</h3>
@@ -511,7 +515,9 @@
 </div>
 </div>
 </div>
+
 </section>
+
 <footer class="footer">
 <span class="muted small">Dados por usuário • Firestore • HTML/JS puro • Vitor Lenin</span>
 </footer>

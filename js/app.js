@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.6.2";
+const APP_VERSION = "v0.6.3";
 const BUILD_TIME = "19/02/2026 08:00";
 const BUILD_TIME_ISO = "2026-02-19T08:00:00";
 
@@ -771,6 +771,7 @@ class UI {
     this.btnCsv = this.$("btnCsv");
     this.btnPdf = this.$("btnPdf");
     this.btnCartoes = this.$("btnCartoes");
+    this.btnGerenciarCartoes = this.$("btnGerenciarCartoes");
 
     // Cartões / faturas
     this.dlgCartoes = this.$("dlgCartoes");
@@ -1181,6 +1182,12 @@ class UI {
           alert(e.message || "Erro ao abrir cartões.");
         }
       });
+
+      // Atalho em Configurações
+      if (this.btnGerenciarCartoes) {
+        this.btnGerenciarCartoes.addEventListener("click", () => this.btnCartoes && this.btnCartoes.click());
+      }
+
     }
     this.btnFecharCartoes?.addEventListener("click", () => this._closeCartoesDialog());
     this.fatCard?.addEventListener("change", () => this._renderFatura());
@@ -1388,6 +1395,16 @@ class UI {
         console.warn("Falha ao carregar recorrentes:", e);
       }
 
+      // Cartões (precisa estar carregado já na tela inicial para o seletor funcionar)
+      try {
+        this.state.cards = await this.cardSvc.loadOrSeed();
+        this.state.cardInvoices = await this.invSvc.load();
+        this._syncCardSelects();
+        this._updateInvoiceHint();
+      } catch (e) {
+        console.warn("Falha ao carregar cartões:", e);
+      }
+
       await this.refreshMonth();
       this.renderLancamentos();
       if (this.state.route === "categorias") this.renderCategorias();
@@ -1397,9 +1414,12 @@ class UI {
       this.btnLogout.style.display = "none";
       this.state.txMonth = [];
       this.state.categories = [];
+      this.state.cards = [];
+      this.state.cardInvoices = {};
       this._renderDashboard();
       this.renderLancamentos();
       this._syncCategorySelects(false);
+      try { this._syncCardSelects(); } catch (_) {}
     }
   }
 
