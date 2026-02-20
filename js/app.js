@@ -1,6 +1,6 @@
-const APP_VERSION = "v0.6.7.3.2";
-const BUILD_TIME = "20/02/2026 14:30";
-const BUILD_TIME_ISO = "2026-02-20T14:30:00";
+const APP_VERSION = "v0.6.7.3";
+const BUILD_TIME = "20/02/2026 09:10";
+const BUILD_TIME_ISO = "2026-02-20T09:10:00";
 
 // Ripple effect for buttons (mobile-friendly feedback)
 // Works for: .btn (primary/ghost/danger) without changing app logic.
