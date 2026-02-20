@@ -197,10 +197,15 @@ body{
 
 /* Botão de ação grande (Configurações/Cartões) */
 .btnWide{
-  width: 100%;
-  padding: 14px 16px;
-  border-radius: 16px;
-  font-size: 16px;
+  /*
+    Antes: ocupava 100% da largura e ficava "esticado" no desktop.
+    Agora: tamanho mais contido no PC e ainda confortável no mobile.
+  */
+  width: min(100%, 420px);
+  margin-inline: auto;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
@@ -473,7 +478,32 @@ select option{
   color: var(--text);
 }
 input::placeholder{color: rgba(233,242,255,.35)}
-.actionsRow{margin-top: 6px}
+
+/*
+  Ações do "Atalho" (Salvar / Ver lançamentos):
+  - No desktop, não estica para 50%/50%.
+  - No mobile, mantém bom encaixe sem ficar alto demais.
+*/
+.actionsRow{
+  margin-top: 6px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-start;
+}
+.actionsRow .btn{
+  width:auto;
+  min-width: 160px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+@media (max-width: 520px){
+  .actionsRow{flex-direction:column; align-items:stretch;}
+  .actionsRow .btn{width:100%; min-width:0;}
+}
+
 .formMsg{margin-top:10px; font-size:12px; color: var(--muted); min-height: 16px}
 
 /* Checkbox (Editar -> Tornar recorrente) */
