@@ -1,6 +1,6 @@
-const APP_VERSION = "v0.6.6";
-const BUILD_TIME = "19/02/2026 17:00";
-const BUILD_TIME_ISO = "2026-02-19T17:00:00";
+const APP_VERSION = "v0.6.7";
+const BUILD_TIME = "19/02/2026 08:55";
+const BUILD_TIME_ISO = "2026-02-19T08:55:00";
 
 // Firebase init (compat build for maximum browser support)
 // Note: firebase scripts are loaded in index.html before this file.
@@ -704,6 +704,9 @@ class UI {
     this.qPayMethod = this.$("qPayMethod");
     this.qCardWrap = this.$("qCardWrap");
     this.qCard = this.$("qCard");
+    this.qInstWrap = this.$("qInstWrap");
+    this.qInstallments = this.$("qInstallments");
+    this.qInstHint = this.$("qInstHint");
     this.qCardBtn = this.$("qCardBtn");
     this.qCardBtnText = this.$("qCardBtnText");
     this.cardPickerModal = this.$("cardPickerModal");
@@ -1001,14 +1004,47 @@ class UI {
 
           this._clearEditMode();
         } else {
-          await this.txSvc.add(tx);
-          this.qDesc.value = "";
-          this.qValor.value = "";
-          this._resetPayFields();
-          // Mantém a UI coerente com o tipo padrão
-          this._applyTypeUI();
-          this._updateInvoiceHint();
-          this.quickMsg.textContent = "Salvo com sucesso ✅";
+          // NOVO lançamento
+          const n = (isSaida && payMethod === "credito")
+            ? Math.max(1, Math.min(24, parseInt(this.qInstallments?.value || "1", 10) || 1))
+            : 1;
+
+          if (isSaida && payMethod === "credito" && n > 1) {
+            if (!cardId) throw new Error("Selecione um cartão para parcelar.");
+            const groupId = cryptoRandomId();
+            const parts = splitAmountBRL(tx.amount, n);
+
+            for (let idx = 0; idx < n; idx++) {
+              const date = addMonthsClampISO(tx.date, idx);
+              const desc = `${tx.description} (${idx + 1}/${n})`;
+              await this.txSvc.add({
+                ...tx,
+                description: desc,
+                amount: parts[idx],
+                date,
+                installmentGroupId: groupId,
+                installmentNo: idx + 1,
+                installmentCount: n,
+                originalDescription: tx.description
+              });
+            }
+
+            this.qDesc.value = "";
+            this.qValor.value = "";
+            this._resetPayFields();
+            this._applyTypeUI();
+            this._updateInvoiceHint();
+            this.quickMsg.textContent = `Salvo em ${n} parcelas ✅`;
+          } else {
+            await this.txSvc.add(tx);
+            this.qDesc.value = "";
+            this.qValor.value = "";
+            this._resetPayFields();
+            // Mantém a UI coerente com o tipo padrão
+            this._applyTypeUI();
+            this._updateInvoiceHint();
+            this.quickMsg.textContent = "Salvo com sucesso ✅";
+          }
         }
 
         await this.refreshMonth();
@@ -1030,9 +1066,15 @@ class UI {
     if (this.qPayMethod) {
       this.qPayMethod.addEventListener("change", () => {
         const isCredit = this.qPayMethod.value === "credito";
+        const canSplit = isCredit && !this.state.editTxId && (this.qTipo?.value === "saida");
         if (this.qCardWrap) this.qCardWrap.style.display = isCredit ? "block" : "none";
+        if (this.qInstWrap) this.qInstWrap.style.display = canSplit ? "block" : "none";
+        if (!canSplit && this.qInstallments) this.qInstallments.value = "1";
+
         if (!isCredit && this.qCard) this.qCard.value = "";
         if (!isCredit && this.qCardBtnText) this.qCardBtnText.textContent = "Selecione um cartão…";
+
+        this._updateInstallmentHint();
         this._updateInvoiceHint();
       });
     }
@@ -1041,6 +1083,11 @@ class UI {
       this.qTipo.addEventListener("change", () => {
         this._applyTypeUI();
       });
+    }
+
+    if (this.qInstallments) {
+      this.qInstallments.addEventListener("input", () => this._updateInstallmentHint());
+      this.qInstallments.addEventListener("change", () => this._updateInstallmentHint());
     }
     // Seletor de cartão: em PWA/Android o <select> pode "bugar"; usamos um picker custom quando disponível.
     if (this.qCardBtn) {
@@ -1374,6 +1421,9 @@ class UI {
     if (this.qCard) this.qCard.value = "";
     if (this.qCardBtnText) this.qCardBtnText.textContent = "Selecione um cartão…";
     if (this.qCardWrap) this.qCardWrap.style.display = "none";
+    if (this.qInstallments) this.qInstallments.value = "1";
+    if (this.qInstWrap) this.qInstWrap.style.display = "none";
+    if (this.qInstHint) this.qInstHint.textContent = "Ao salvar, vou criar 1 lançamento por mês.";
     if (this.qInvoiceHint) this.qInvoiceHint.textContent = "";
   }
 
@@ -1393,6 +1443,11 @@ class UI {
     }
 
     // Ajusta hint
+    const pm = this.qPayMethod?.value || "dinheiro";
+    const canSplit = (type === "saida") && (pm === "credito") && !this.state.editTxId;
+    if (this.qInstWrap) this.qInstWrap.style.display = canSplit ? "block" : "none";
+    if (!canSplit && this.qInstallments) this.qInstallments.value = "1";
+    this._updateInstallmentHint();
     this._updateInvoiceHint();
   }
 
@@ -2173,6 +2228,25 @@ class UI {
     this.qInvoiceHint.textContent = `Vai para fatura ${invKey} • Fecha ${closingDate} • Vence ${dueDate}`;
   }
 
+
+  _updateInstallmentHint() {
+    if (!this.qInstHint) return;
+    const pm = this.qPayMethod?.value || "dinheiro";
+    const isCredit = pm === "credito";
+    const n = Math.max(1, Math.min(24, parseInt(this.qInstallments?.value || "1", 10) || 1));
+    if (this.qInstallments) this.qInstallments.value = String(n);
+
+    if (!isCredit || this.state.editTxId || (this.qTipo?.value !== "saida")) {
+      this.qInstHint.textContent = "Ao salvar, vou criar 1 lançamento por mês.";
+      return;
+    }
+    if (n <= 1) {
+      this.qInstHint.textContent = "1x (sem parcelas)";
+      return;
+    }
+    this.qInstHint.textContent = `${n}x — vou criar ${n} lançamentos (1 por mês) a partir da data escolhida.`;
+  }
+
   _syncCardSelects() {
     const cards = this.state.cards || [];
     const fill = (sel, includeAdd = false) => {
@@ -2517,6 +2591,11 @@ class UI {
       this._updateInvoiceHint();
     }
 
+    // Parcelas: somente para novo lançamento (não aparece na edição)
+    if (this.qInstWrap) this.qInstWrap.style.display = "none";
+    if (this.qInstallments) this.qInstallments.value = "1";
+    this._updateInstallmentHint();
+
     // Recorrência: só aparece no modo edição
     if (this.qRecRow) this.qRecRow.style.display = "flex";
     if (this.qMakeRecurring) {
@@ -2715,6 +2794,28 @@ class UI {
     }
     window.print();
   }
+}
+
+function splitAmountBRL(total, n) {
+  // Divide um valor em n partes com ajuste de centavos (sempre fecha a soma).
+  const totalCent = Math.round(Number(total || 0) * 100);
+  const base = Math.floor(totalCent / n);
+  const resto = totalCent % n;
+  const parts = [];
+  for (let i = 0; i < n; i++) parts.push((base + (i < resto ? 1 : 0)) / 100);
+  return parts;
+}
+
+function addMonthsClampISO(dateISO, monthsToAdd) {
+  // Soma meses mantendo o dia quando possível; se não existir (ex: 31), ajusta para o último dia do mês.
+  const [y, m, d] = String(dateISO || Dates.todayISO()).split("-").map(Number);
+  const base = new Date(y, (m - 1) + Number(monthsToAdd || 0), 1);
+  const year = base.getFullYear();
+  const month = base.getMonth(); // 0-11
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const day = Math.min(Math.max(1, d || 1), lastDay);
+  const out = new Date(year, month, day);
+  return Dates.dateToISO(out);
 }
 
 function cryptoRandomId() {
