@@ -1,4 +1,4 @@
-const APP_VERSION = "v0.6.7";
+const APP_VERSION = "v0.6.7.1";
 const BUILD_TIME = "19/02/2026 08:55";
 const BUILD_TIME_ISO = "2026-02-19T08:55:00";
 

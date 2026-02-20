@@ -380,7 +380,8 @@ body{
   border-radius: var(--radius);
   background: rgba(0,0,0,.14);
   padding: 14px;
-  min-height: 260px;
+  /* Altura automática: evita "espaço sobrando" em telas como Configurações/Cartões */
+  min-height: auto;
 }
 
 .box__title h3{margin:0}
