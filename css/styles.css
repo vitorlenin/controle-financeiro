@@ -435,8 +435,15 @@ body{
   flex-direction: column;
   gap:10px;
 }
-.btnRow .btn{ width:100%; min-width: 0; }
-
+/* Botões de Configurações (Nova categoria/subcategoria): não esticar no desktop */
+.btnRow .btn{
+  width: min(100%, 420px);
+  min-width: 0;
+  align-self: center;
+}
+@media (max-width: 520px){
+  .btnRow .btn{ width:100%; align-self: stretch; }
+}
 .modalActions{
   display:flex;
   gap:10px;
@@ -494,8 +501,8 @@ input::placeholder{color: rgba(233,242,255,.35)}
 }
 .actionsRow .btn{
   width:auto;
-  min-width: 160px;
-  padding: 9px 12px;
+  min-width: 140px;
+  padding: 8px 12px;
   border-radius: 12px;
   font-size: 14px;
 }
