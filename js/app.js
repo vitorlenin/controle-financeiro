@@ -1,6 +1,37 @@
-const APP_VERSION = "v0.6.7.1";
-const BUILD_TIME = "19/02/2026 08:55";
-const BUILD_TIME_ISO = "2026-02-19T08:55:00";
+const APP_VERSION = "v0.6.7.3";
+const BUILD_TIME = "20/02/2026 09:10";
+const BUILD_TIME_ISO = "2026-02-20T09:10:00";
+
+// Ripple effect for buttons (mobile-friendly feedback)
+// Works for: .btn (primary/ghost/danger) without changing app logic.
+document.addEventListener("click", (ev) => {
+  const btn = ev.target?.closest?.("button.btn");
+  if (!btn) return;
+  // Respect disabled buttons
+  if (btn.disabled) return;
+
+  try {
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = ev.clientX - rect.left - size / 2;
+    const y = ev.clientY - rect.top - size / 2;
+
+    const ripple = document.createElement("span");
+    ripple.className = "ripple";
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+
+    // Remove previous ripple (avoid stacking)
+    const old = btn.querySelector(".ripple");
+    if (old) old.remove();
+
+    btn.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove(), { once: true });
+  } catch (_) {
+    // no-op
+  }
+});
 
 // Firebase init (compat build for maximum browser support)
 // Note: firebase scripts are loaded in index.html before this file.

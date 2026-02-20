@@ -190,8 +190,44 @@ body{
   background: var(--accent-blue);
   border-color: rgba(255,255,255,.14);
   box-shadow: 0 6px 18px rgba(0,0,0,.30);
+  position: relative;
+  overflow: hidden;
 }
 .btn--primary:hover{background: var(--accent-blue-hover)}
+
+/* Botão de ação grande (Configurações/Cartões) */
+.btnWide{
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btnIcon{
+  display:inline-block;
+  transition: transform .22s ease, filter .22s ease;
+}
+
+.btn--primary:hover .btnIcon{ transform: rotate(90deg) scale(1.05); }
+
+/* Ripple effect */
+.ripple{
+  position:absolute;
+  border-radius: 999px;
+  transform: scale(0);
+  opacity: .55;
+  animation: ripple .55s ease-out;
+  background: rgba(255,255,255,.35);
+  pointer-events:none;
+}
+@keyframes ripple{
+  to{ transform: scale(4); opacity: 0; }
+}
 .btn--ghost{
   background: rgba(255,255,255,.04);
 }
@@ -391,10 +427,10 @@ body{
 
 .btnRow{
   display:flex;
+  flex-direction: column;
   gap:10px;
-  flex-wrap:wrap;
 }
-.btnRow .btn{ flex:1; min-width: 180px; }
+.btnRow .btn{ width:100%; min-width: 0; }
 
 .modalActions{
   display:flex;
