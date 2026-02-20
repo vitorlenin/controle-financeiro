@@ -201,7 +201,7 @@ body{
     Antes: ocupava 100% da largura e ficava "esticado" no desktop.
     Agora: tamanho mais contido no PC e ainda confortável no mobile.
   */
-  width: min(100%, 420px);
+  width: min(100%, 200px);
   margin-inline: auto;
   padding: 10px 14px;
   border-radius: 14px;
@@ -435,8 +435,15 @@ body{
   flex-direction: column;
   gap:10px;
 }
-.btnRow .btn{ width:100%; min-width: 0; }
-
+/* Botões de Configurações (Nova categoria/subcategoria): não esticar no desktop */
+.btnRow .btn{
+  width: min(100%, 200px);
+  min-width: 0;
+  margin-left: 0;
+}
+@media (max-width: 520px){
+  .btnRow .btn{ width:100%; align-self: stretch; }
+}
 .modalActions{
   display:flex;
   gap:10px;
@@ -494,8 +501,8 @@ input::placeholder{color: rgba(233,242,255,.35)}
 }
 .actionsRow .btn{
   width:auto;
-  min-width: 160px;
-  padding: 9px 12px;
+  min-width: 140px;
+  padding: 8px 12px;
   border-radius: 12px;
   font-size: 14px;
 }
@@ -1079,49 +1086,3 @@ input:focus, select:focus{
 
 .chipBtn.is-danger{ color: var(--danger); background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.18); }
 .chipBtn.is-danger:hover{ background: rgba(239,68,68,.18); }
-
-
-/* ===== CONFIGURAÇÕES — BOTÕES (PC + MOBILE) ===== */
-
-/* Container dos botões */
-.btnRow {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;   /* esquerda */
-  gap: 10px;
-  margin-top: 12px;          /* quebra de linha após o texto */
-}
-
-/* Mobile — largura total */
-.btnRow .btn {
-  width: 100%;
-  justify-content: flex-start;
-}
-
-/* Desktop — largura fixa */
-@media (min-width: 768px) {
-  .btnRow .btn {
-    width: 200px !important;
-    max-width: 200px;
-  }
-}
-
-/* ===== BOTÃO GERENCIAR CARTÕES ===== */
-
-.cardActions {
-  margin-top: 12px;          /* quebra de linha após texto */
-  display: flex;
-  justify-content: flex-start;
-}
-
-.cardActions .btn {
-  width: 100%;
-  justify-content: flex-start;
-}
-
-@media (min-width: 768px) {
-  .cardActions .btn {
-    width: 200px !important;
-    max-width: 200px;
-  }
-}
