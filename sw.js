@@ -1,4 +1,4 @@
-const CACHE = "cf-cache-v0.6.7.3.3";
+const CACHE = "cf-cache-v0.6.7.4";
 const ASSETS = [
   "./",
   "./index.html",

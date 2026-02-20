@@ -1,6 +1,4 @@
-const APP_VERSION = "v0.6.7.3.3";
-const BUILD_TIME = "20/02/2026 16:35";
-const BUILD_TIME_ISO = "2026-02-20T14:30:00";
+const APP_VERSION = "v0.6.7.4";
 
 // Ripple effect for buttons (mobile-friendly feedback)
 // Works for: .btn (primary/ghost/danger) without changing app logic.
@@ -878,8 +876,7 @@ class UI {
     if (this.fatMes) this.fatMes.value = this.state.monthKey;
 
     if (this.versionInfo) {
-      this.versionInfo.textContent = `${APP_VERSION} • Atualizado em ${BUILD_TIME}`;
-      this.versionInfo.title = `Build: ${BUILD_TIME_ISO}`;
+      this.versionInfo.textContent = `${APP_VERSION}`;
     }
     if (this.versionBadge) {
       this.versionBadge.textContent = `(${APP_VERSION})`;
@@ -2909,6 +2906,9 @@ function downloadBlob(blob, filename) {
 const authSvc = new AuthService();
 const txSvc = new TxService(() => authSvc.user?.uid);
 const ui = new UI(authSvc, txSvc);
+
+const app = { authSvc, txSvc, ui };
+window.__CF__ = app; // preparado para modularização/depuração
 
 (async () => {
   try {
