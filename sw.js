@@ -1,8 +1,15 @@
-const CACHE = "cf-cache-v0.6.7.4";
+const CACHE = "cf-cache-v7.0.5";
 const ASSETS = [
   "./",
   "./index.html",
   "./css/styles.css",
+  "./js/ui.js",
+  "./js/auth.js",
+  "./js/categorias.js",
+  "./js/lancamentos.js",
+  "./js/relatorios.js",
+  "./js/dashboard.js",
+  "./js/backup.js",
   "./js/app.js",
   "./manifest.json",
   "./favicon.png"

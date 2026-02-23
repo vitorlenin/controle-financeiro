@@ -26,7 +26,7 @@
 }
 
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{height:100%; overflow-x:hidden}
 body{
   margin:0;
   /* Inter é hoje uma das fontes mais usadas em sistemas; fallback mantém compatibilidade */
@@ -533,9 +533,10 @@ input::placeholder{color: rgba(233,242,255,.35)}
   grid-template-columns: 150px 180px 220px 180px 180px 120px;
 }
 
-.tableWrap{margin-top: 12px}
+.tableWrap{margin-top:12px; max-width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch}
 .table{
-  width:100%;
+  width:max-content;
+  min-width:100%;
   border-collapse: collapse;
   font-size:13px;
 }
@@ -1086,3 +1087,35 @@ input:focus, select:focus{
 
 .chipBtn.is-danger{ color: var(--danger); background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.18); }
 .chipBtn.is-danger:hover{ background: rgba(239,68,68,.18); }
+
+
+/* Toast (popup) feedback */
+.toast{
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%) translateY(12px);
+  background: rgba(15,23,42,.92);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.96);
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: .2px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+  z-index: 9999;
+  max-width: min(520px, calc(100vw - 24px));
+  text-align: center;
+}
+.toast.is-show{
+  opacity: 1;
+  transform: translate(-50%, -50%) translateY(0);
+}
+.toast.is-error{
+  border-color: rgba(239,68,68,.35);
+}
